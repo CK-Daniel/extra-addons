@@ -43,6 +43,9 @@ class WC_Product_Addons_Admin {
 	 */
 	public function admin_menu() {
 		$page = add_submenu_page( 'edit.php?post_type=product', __( 'Add-ons', 'woocommerce-product-addons-extra-digital' ), __( 'Add-ons', 'woocommerce-product-addons-extra-digital' ), 'manage_woocommerce', 'addons', array( $this, 'global_addons_admin' ) );
+		
+		// Add conditional logic submenu
+		$conditional_page = add_submenu_page( 'edit.php?post_type=product', __( 'Conditional Logic', 'woocommerce-product-addons-extra-digital' ), __( 'Conditional Logic', 'woocommerce-product-addons-extra-digital' ), 'manage_woocommerce', 'addon-conditional-logic', array( $this, 'conditional_logic_admin' ) );
 
 		if (
 			! class_exists( 'Features' ) ||
@@ -134,11 +137,15 @@ class WC_Product_Addons_Admin {
 	 * @since 3.0.0
 	 */
 	public function script_styles() {
+		$screen_id = get_current_screen()->id;
+		$is_conditional_logic_page = isset( $_GET['page'] ) && $_GET['page'] === 'addon-conditional-logic';
+		
 		if (
-			'product_page_addons' !== get_current_screen()->id &&
-			'product'             !== get_current_screen()->id &&
-			'shop_order'          !== get_current_screen()->id &&
-			'shop_subscription'   !== get_current_screen()->id
+			'product_page_addons' !== $screen_id &&
+			'product'             !== $screen_id &&
+			'shop_order'          !== $screen_id &&
+			'shop_subscription'   !== $screen_id &&
+			! $is_conditional_logic_page
 		) {
 			return;
 		}
@@ -172,6 +179,26 @@ class WC_Product_Addons_Admin {
 		wp_localize_script( 'woocommerce-product-addons-extra-digital-admin', 'wc_pao_params', apply_filters( 'wc_pao_params', $params ) );
 
 		wp_enqueue_script( 'woocommerce-product-addons-extra-digital-admin' );
+		
+		// Load conditional logic scripts on the conditional logic admin page
+		if ( $is_conditional_logic_page ) {
+			wp_enqueue_script( 'wc-pao-conditional-logic-admin', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic-admin' . $suffix . '.js', array( 'jquery', 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-droppable', 'wc-enhanced-select' ), WC_PRODUCT_ADDONS_VERSION, true );
+			wp_enqueue_style( 'wc-pao-conditional-logic-admin-css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/conditional-logic-admin.css', array(), WC_PRODUCT_ADDONS_VERSION );
+			
+			wp_localize_script(
+				'wc-pao-conditional-logic-admin',
+				'wc_pao_conditional_logic_admin',
+				array(
+					'ajax_url' => admin_url( 'admin-ajax.php' ),
+					'nonce'    => wp_create_nonce( 'wc_pao_conditional_logic' ),
+					'i18n'     => array(
+						'confirm_delete' => __( 'Are you sure you want to delete this rule?', 'woocommerce-product-addons-extra-digital' ),
+						'rule_saved'     => __( 'Rule saved successfully', 'woocommerce-product-addons-extra-digital' ),
+						'rule_error'     => __( 'Error saving rule', 'woocommerce-product-addons-extra-digital' ),
+					),
+				)
+			);
+		}
 	}
 
 	/**
@@ -656,6 +683,17 @@ class WC_Product_Addons_Admin {
 
 			echo $addon_html;
 		}
+	}
+
+	/**
+	 * Conditional Logic admin page
+	 */
+	public function conditional_logic_admin() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( __( 'You do not have sufficient permissions to access this page.', 'woocommerce-product-addons-extra-digital' ) );
+		}
+
+		include_once WC_PRODUCT_ADDONS_PLUGIN_PATH . '/includes/admin/views/html-conditional-logic-admin.php';
 	}
 
 	/**
