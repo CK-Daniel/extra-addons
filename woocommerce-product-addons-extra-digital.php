@@ -1,21 +1,18 @@
 <?php
 /**
  * Plugin Name: WooCommerce Product Add-ons Extra Digital
- * Plugin URI: https://woocommerce.com/products/product-add-ons/
+ * Plugin URI: https://extra.co.il/
  * Description: Add extra options to products which your customers can select from, when adding to the cart, with an optional fee for each extra option. Add-ons can be checkboxes, a select box, or custom text input.
- * Version: 4.0.0
+ * Version: 1.0.0
  * Author: WooCommerce
- * Author URI: https://woocommerce.com
+ * Author URI: https://extra.co.il/
  * Requires at least: 3.8
  * Tested up to: 5.7
  * WC tested up to: 5.3
  * WC requires at least: 3.0
  * Text Domain: woocommerce-product-addons-extra-digital
  * Domain Path: /languages/
- * Copyright: © 2021 WooCommerce
- * License: GNU General Public License v3.0
- * License URI: http://www.gnu.org/licenses/gpl-3.0.html
- * Woo: 18618:147d0077e591e16db9d0d67daeb8c484
+ * Copyright: © 2025 Extra Digital
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
