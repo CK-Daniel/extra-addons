@@ -14,9 +14,9 @@ $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc
 	<select class="wc-pao-addon-field wc-pao-addon-select" name="addon-<?php echo sanitize_title( $field_name ); ?>" id="addon-<?php echo sanitize_title( $field_name ); ?>" <?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?>>
 
 		<?php if ( empty( $required ) ) { ?>
-			<option value=""><?php esc_html_e( 'לא נבחר', 'woocommerce-product-addons' ); ?></option>
+			<option value=""><?php esc_html_e( 'לא נבחר', 'woocommerce-product-addons-extra-digital' ); ?></option>
 		<?php } else { ?>
-			<option value=""><?php esc_html_e( 'בחירה', 'woocommerce-product-addons' ); ?></option>
+			<option value=""><?php esc_html_e( 'בחירה', 'woocommerce-product-addons-extra-digital' ); ?></option>
 		<?php } ?>
 
 		<?php foreach ( $addon['options'] as $i => $option ) {

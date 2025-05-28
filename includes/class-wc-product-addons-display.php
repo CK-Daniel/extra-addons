@@ -63,7 +63,7 @@ class WC_Product_Addons_Display {
 			is_shop() ||
 			( is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'product_page' ) )
 		) {
-			wp_enqueue_style( 'woocommerce-addons-css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/frontend.css', array( 'dashicons' ), WC_PRODUCT_ADDONS_VERSION );
+			wp_enqueue_style( 'woocommerce-addons-extra-digital-css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/frontend.css', array( 'dashicons' ), WC_PRODUCT_ADDONS_VERSION );
 			wp_enqueue_script( 'jquery-tiptip', WC()->plugin_url() . '/assets/js/jquery-tiptip/jquery.tipTip.min.js', array( 'jquery' ), WC_VERSION, true );
 		}
 	}
@@ -76,7 +76,7 @@ class WC_Product_Addons_Display {
 
 		wp_register_script( 'accounting', WC()->plugin_url() . '/assets/js/accounting/accounting' . $suffix . '.js', array( 'jquery' ), '0.4.2' );
 
-		wp_enqueue_script( 'woocommerce-addons', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/addons' . $suffix . '.js', array( 'jquery', 'accounting' ), WC_PRODUCT_ADDONS_VERSION, true );
+		wp_enqueue_script( 'woocommerce-addons-extra-digital', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/addons' . $suffix . '.js', array( 'jquery', 'accounting' ), WC_PRODUCT_ADDONS_VERSION, true );
 
 		$params = array(
 			'price_display_suffix'         => esc_attr( get_option( 'woocommerce_price_display_suffix' ) ),
@@ -84,8 +84,8 @@ class WC_Product_Addons_Display {
 			'price_include_tax'            => 'yes' === esc_attr( get_option( 'woocommerce_prices_include_tax' ) ),
 			'display_include_tax'          => ( wc_tax_enabled() && 'incl' === esc_attr( get_option( 'woocommerce_tax_display_shop' ) ) ) ? true : false,
 			'ajax_url'                     => WC()->ajax_url(),
-			'i18n_sub_total'               => __( 'Subtotal', 'woocommerce-product-addons' ),
-			'i18n_remaining'               => sprintf( __( '%s characters remaining', 'woocommerce-product-addons' ), '<span></span>' ),
+			'i18n_sub_total'               => __( 'Subtotal', 'woocommerce-product-addons-extra-digital' ),
+			'i18n_remaining'               => sprintf( __( '%s characters remaining', 'woocommerce-product-addons-extra-digital' ), '<span></span>' ),
 			'currency_format_num_decimals' => absint( get_option( 'woocommerce_price_num_decimals' ) ),
 			'currency_format_symbol'       => get_woocommerce_currency_symbol(),
 			'currency_format_decimal_sep'  => esc_attr( wp_unslash( get_option( 'woocommerce_price_decimal_sep' ) ) ),
@@ -125,7 +125,7 @@ class WC_Product_Addons_Display {
 			$params['currency_format'] = esc_attr( str_replace( array( '%1$s', '%2$s' ), array( '%s', '%v' ), get_woocommerce_price_format() ) );
 		}
 
-		wp_localize_script( 'woocommerce-addons', 'woocommerce_addons_params', apply_filters( 'woocommerce_product_addons_params', $params ) );
+		wp_localize_script( 'woocommerce-addons-extra-digital', 'woocommerce_addons_params', apply_filters( 'woocommerce_product_addons_params', $params ) );
 	}
 
 	/**
@@ -141,7 +141,7 @@ class WC_Product_Addons_Display {
 	public function quick_view_single_compat() {
 		if ( is_singular( 'product' ) && class_exists( 'WC_Quick_View' ) ) {
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-			wp_enqueue_script( 'woocommerce-addons-quickview-compat', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/quickview' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_ADDONS_VERSION, true );
+			wp_enqueue_script( 'woocommerce-addons-extra-digital-quickview-compat', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/quickview' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_ADDONS_VERSION, true );
 		}
 	}
 
@@ -188,7 +188,7 @@ class WC_Product_Addons_Display {
 						'display_description' => WC_Product_Addons_Helper::should_display_description( $addon ),
 						'type'                => $addon['type'],
 					),
-					'woocommerce-product-addons',
+					'woocommerce-product-addons-extra-digital',
 					$this->plugin_path() . '/templates/'
 				);
 
@@ -199,7 +199,7 @@ class WC_Product_Addons_Display {
 					array(
 						'addon' => $addon,
 					),
-					'woocommerce-product-addons',
+					'woocommerce-product-addons-extra-digital',
 					$this->plugin_path() . '/templates/'
 				);
 			}
@@ -294,7 +294,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -310,7 +310,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -326,7 +326,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -342,7 +342,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -358,7 +358,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -374,7 +374,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -391,7 +391,7 @@ class WC_Product_Addons_Display {
 				'addon'    => $addon,
 				'max_size' => size_format( wp_max_upload_size() ),
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -407,7 +407,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -423,7 +423,7 @@ class WC_Product_Addons_Display {
 			array(
 				'addon' => $addon,
 			),
-			'woocommerce-product-addons',
+			'woocommerce-product-addons-extra-digital',
 			$this->plugin_path() . '/templates/'
 		);
 	}
@@ -469,7 +469,7 @@ class WC_Product_Addons_Display {
 
 		if ( ! is_single( $product->get_id() ) ) {
 			if ( $this->check_required_addons( $product->get_id() ) ) {
-				$text = apply_filters( 'addons_add_to_cart_text', __( 'Select options', 'woocommerce-product-addons' ) );
+				$text = apply_filters( 'addons_add_to_cart_text', __( 'Select options', 'woocommerce-product-addons-extra-digital' ) );
 			}
 		}
 

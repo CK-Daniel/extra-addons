@@ -44,9 +44,9 @@ if ( 'show' === $opt_show_image_swatch ) {
 
 	<div class="wc-pao-addon-content-price-type">
 		<select name="product_addon_option_price_type[<?php echo $loop; ?>][]" class="wc-pao-addon-option-price-type">
-			<option <?php selected( 'flat_fee', $opt_price_type ); ?> value="flat_fee"><?php esc_html_e( 'Flat Fee', 'woocommerce-product-addons' ); ?></option>
-			<option <?php selected( 'quantity_based', $opt_price_type ); ?> value="quantity_based"><?php esc_html_e( 'Quantity Based', 'woocommerce-product-addons' ); ?></option>
-			<option <?php selected( 'percentage_based', $opt_price_type ); ?> value="percentage_based"><?php esc_html_e( 'Percentage Based', 'woocommerce-product-addons' ); ?></option>
+			<option <?php selected( 'flat_fee', $opt_price_type ); ?> value="flat_fee"><?php esc_html_e( 'Flat Fee', 'woocommerce-product-addons-extra-digital' ); ?></option>
+			<option <?php selected( 'quantity_based', $opt_price_type ); ?> value="quantity_based"><?php esc_html_e( 'Quantity Based', 'woocommerce-product-addons-extra-digital' ); ?></option>
+			<option <?php selected( 'percentage_based', $opt_price_type ); ?> value="percentage_based"><?php esc_html_e( 'Percentage Based', 'woocommerce-product-addons-extra-digital' ); ?></option>
 		</select>
 	</div>
 

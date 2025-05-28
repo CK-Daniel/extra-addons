@@ -42,7 +42,7 @@ class WC_Product_Addons_Admin {
 	 * Add menus
 	 */
 	public function admin_menu() {
-		$page = add_submenu_page( 'edit.php?post_type=product', __( 'Add-ons', 'woocommerce-product-addons' ), __( 'Add-ons', 'woocommerce-product-addons' ), 'manage_woocommerce', 'addons', array( $this, 'global_addons_admin' ) );
+		$page = add_submenu_page( 'edit.php?post_type=product', __( 'Add-ons', 'woocommerce-product-addons-extra-digital' ), __( 'Add-ons', 'woocommerce-product-addons-extra-digital' ), 'manage_woocommerce', 'addons', array( $this, 'global_addons_admin' ) );
 
 		if (
 			! class_exists( 'Features' ) ||
@@ -56,8 +56,8 @@ class WC_Product_Addons_Admin {
 
 		Menu::add_plugin_item(
 			array(
-				'id'         => 'woocommerce-product-addons',
-				'title'      => __( 'Product Add-ons', 'woocommerce-product-addons' ),
+				'id'         => 'woocommerce-product-addons-extra-digital',
+				'title'      => __( 'Product Add-ons', 'woocommerce-product-addons-extra-digital' ),
 				'url'        => 'edit.php?post_type=product&page=addons',
 				'capability' => 'manage_woocommerce',
 			)
@@ -144,11 +144,11 @@ class WC_Product_Addons_Admin {
 		}
 
 		wp_enqueue_media();
-		wp_enqueue_style( 'woocommerce_product_addons_css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/admin.css', array(), WC_PRODUCT_ADDONS_VERSION );
+		wp_enqueue_style( 'woocommerce-product-addons-extra-digital-admin-css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/admin.css', array(), WC_PRODUCT_ADDONS_VERSION );
 
 		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
-		wp_register_script( 'woocommerce_product_addons', plugins_url( 'assets/js/admin' . $suffix . '.js', WC_PRODUCT_ADDONS_MAIN_FILE ), array( 'jquery' ), WC_PRODUCT_ADDONS_VERSION, true );
+		wp_register_script( 'woocommerce-product-addons-extra-digital-admin', plugins_url( 'assets/js/admin' . $suffix . '.js', WC_PRODUCT_ADDONS_MAIN_FILE ), array( 'jquery' ), WC_PRODUCT_ADDONS_VERSION, true );
 
 		$params = array(
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
@@ -157,21 +157,21 @@ class WC_Product_Addons_Admin {
 				'get_addon_field'   => wp_create_nonce( 'wc-pao-get-addon-field' ),
 			),
 			'i18n'     => array(
-				'required_fields'       => __( 'All fields must have a title and/or option name. Please review the settings highlighted in red border.', 'woocommerce-product-addons' ),
-				'limit_price_range'         => __( 'Limit price range', 'woocommerce-product-addons' ),
-				'limit_quantity_range'      => __( 'Limit quantity range', 'woocommerce-product-addons' ),
-				'limit_character_length'    => __( 'Limit character length', 'woocommerce-product-addons' ),
-				'restrictions'              => __( 'Restrictions', 'woocommerce-product-addons' ),
-				'confirm_remove_addon'      => __( 'Are you sure you want remove this add-on field?', 'woocommerce-product-addons' ),
-				'confirm_remove_option'     => __( 'Are you sure you want delete this option?', 'woocommerce-product-addons' ),
-				'add_image_swatch'          => __( 'Add Image Swatch', 'woocommerce-product-addons' ),
-				'add_image'                 => __( 'Add Image', 'woocommerce-product-addons' ),
+				'required_fields'       => __( 'All fields must have a title and/or option name. Please review the settings highlighted in red border.', 'woocommerce-product-addons-extra-digital' ),
+				'limit_price_range'         => __( 'Limit price range', 'woocommerce-product-addons-extra-digital' ),
+				'limit_quantity_range'      => __( 'Limit quantity range', 'woocommerce-product-addons-extra-digital' ),
+				'limit_character_length'    => __( 'Limit character length', 'woocommerce-product-addons-extra-digital' ),
+				'restrictions'              => __( 'Restrictions', 'woocommerce-product-addons-extra-digital' ),
+				'confirm_remove_addon'      => __( 'Are you sure you want remove this add-on field?', 'woocommerce-product-addons-extra-digital' ),
+				'confirm_remove_option'     => __( 'Are you sure you want delete this option?', 'woocommerce-product-addons-extra-digital' ),
+				'add_image_swatch'          => __( 'Add Image Swatch', 'woocommerce-product-addons-extra-digital' ),
+				'add_image'                 => __( 'Add Image', 'woocommerce-product-addons-extra-digital' ),
 			),
 		);
 
-		wp_localize_script( 'woocommerce_product_addons', 'wc_pao_params', apply_filters( 'wc_pao_params', $params ) );
+		wp_localize_script( 'woocommerce-product-addons-extra-digital-admin', 'wc_pao_params', apply_filters( 'wc_pao_params', $params ) );
 
-		wp_enqueue_script( 'woocommerce_product_addons' );
+		wp_enqueue_script( 'woocommerce-product-addons-extra-digital-admin' );
 	}
 
 	/**
@@ -196,7 +196,7 @@ class WC_Product_Addons_Admin {
 				$edit_id = $this->save_global_addons();
 
 				if ( $edit_id ) {
-					echo '<div class="updated"><p>' . esc_html__( 'Add-on saved successfully', 'woocommerce-product-addons' ) . '</p></div>';
+					echo '<div class="updated"><p>' . esc_html__( 'Add-on saved successfully', 'woocommerce-product-addons-extra-digital' ) . '</p></div>';
 				}
 
 				$reference      = wc_clean( $_POST['addon-reference'] );
@@ -211,7 +211,7 @@ class WC_Product_Addons_Admin {
 				$global_addon = get_post( $edit_id );
 
 				if ( ! $global_addon ) {
-					echo '<div class="error">' . esc_html__( 'Error: Add-on not found', 'woocommerce-product-addons' ) . '</div>';
+					echo '<div class="error">' . esc_html__( 'Error: Add-on not found', 'woocommerce-product-addons-extra-digital' ) . '</div>';
 					return;
 				}
 
@@ -237,7 +237,7 @@ class WC_Product_Addons_Admin {
 			} else {
 
 				$global_addons_count = wp_count_posts( 'global_product_addon' );
-				$reference           = __( 'Add-ons Group', 'woocommerce-product-addons' ) . ' #' . ( $global_addons_count->publish + 1 );
+				$reference           = __( 'Add-ons Group', 'woocommerce-product-addons-extra-digital' ) . ' #' . ( $global_addons_count->publish + 1 );
 				$priority            = 10;
 				$objects             = array( 0 );
 				$product_addons      = array();
@@ -249,7 +249,7 @@ class WC_Product_Addons_Admin {
 
 			if ( ! empty( $_GET['delete'] ) && wp_verify_nonce( $_REQUEST['_wpnonce'], 'delete_addon' ) ) {
 				wp_delete_post( absint( $_GET['delete'] ), true );
-				echo '<div class="updated"><p>' . esc_html__( 'Add-on deleted successfully', 'woocommerce-product-addons' ) . '</p></div>';
+				echo '<div class="updated"><p>' . esc_html__( 'Add-on deleted successfully', 'woocommerce-product-addons-extra-digital' ) . '</p></div>';
 			}
 
 			include( dirname( __FILE__ ) . '/views/html-global-admin.php' );
@@ -266,29 +266,29 @@ class WC_Product_Addons_Admin {
 	public function convert_type_name( $type = '' ) {
 		switch ( $type ) {
 			case 'checkboxes':
-				$name = __( 'Checkbox', 'woocommerce-product-addons' );
+				$name = __( 'Checkbox', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'custom_price':
-				$name = __( 'Price', 'woocommerce-product-addons' );
+				$name = __( 'Price', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'input_multiplier':
-				$name = __( 'Quantity', 'woocommerce-product-addons' );
+				$name = __( 'Quantity', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'custom_text':
-				$name = __( 'Short Text', 'woocommerce-product-addons' );
+				$name = __( 'Short Text', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'custom_textarea':
-				$name = __( 'Long Text', 'woocommerce-product-addons' );
+				$name = __( 'Long Text', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'file_upload':
-				$name = __( 'File Upload', 'woocommerce-product-addons' );
+				$name = __( 'File Upload', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'select':
-				$name = __( 'Dropdown', 'woocommerce-product-addons' );
+				$name = __( 'Dropdown', 'woocommerce-product-addons-extra-digital' );
 				break;
 			case 'multiple_choice':
 			default:
-				$name = __( 'Multiple Choice', 'woocommerce-product-addons' );
+				$name = __( 'Multiple Choice', 'woocommerce-product-addons-extra-digital' );
 				break;
 		}
 
@@ -309,7 +309,7 @@ class WC_Product_Addons_Admin {
 
 		if ( ! $reference ) {
 			$global_addons_count = wp_count_posts( 'global_product_addon' );
-			$reference           = __( 'Add-ons Group', 'woocommerce-product-addons' ) . ' #' . ( $global_addons_count->publish + 1 );
+			$reference           = __( 'Add-ons Group', 'woocommerce-product-addons-extra-digital' ) . ' #' . ( $global_addons_count->publish + 1 );
 		}
 
 		if ( ! $priority && 0 !== $priority ) {
@@ -355,7 +355,7 @@ class WC_Product_Addons_Admin {
 	 */
 	public function tab() {
 	?>
-		<li class="addons_tab product_addons hide_if_grouped hide_if_external"><a href="#product_addons_data"><span><?php esc_html_e( 'Add-ons', 'woocommerce-product-addons' ); ?></span></a></li>
+		<li class="addons_tab product_addons hide_if_grouped hide_if_external"><a href="#product_addons_data"><span><?php esc_html_e( 'Add-ons', 'woocommerce-product-addons-extra-digital' ); ?></span></a></li>
 	<?php
 	}
 
@@ -639,7 +639,7 @@ class WC_Product_Addons_Admin {
 			$addon_html = str_replace( '"display_meta"', '"display_meta" style="display:none;"', $addon_html );
 
 			if ( $product && $product->get_sku() ) {
-				$addon_html = str_replace( '<div class="wc-order-item-sku"><strong>' . esc_html__( 'SKU:', 'woocommerce-product-addons' ) . '</strong> ' . esc_html( $product->get_sku() ) . '</div>', '', $addon_html );
+				$addon_html = str_replace( '<div class="wc-order-item-sku"><strong>' . esc_html__( 'SKU:', 'woocommerce-product-addons-extra-digital' ) . '</strong> ' . esc_html( $product->get_sku() ) . '</div>', '', $addon_html );
 			}
 
 			// Variations.
@@ -648,10 +648,10 @@ class WC_Product_Addons_Admin {
 					$var_id = esc_html( $item->get_variation_id() );
 				} else {
 					/* translators: %s ID of variation */
-					$var_id = sprintf( esc_html__( '%s (No longer exists)', 'woocommerce-product-addons' ), $item->get_variation_id() );
+					$var_id = sprintf( esc_html__( '%s (No longer exists)', 'woocommerce-product-addons-extra-digital' ), $item->get_variation_id() );
 				}
 
-				$addon_html = str_replace( '<div class="wc-order-item-variation"><strong>' . esc_html__( 'Variation ID:', 'woocommerce-product-addons' ) . '</strong> ' . $var_id . '</div>', '', $addon_html );
+				$addon_html = str_replace( '<div class="wc-order-item-variation"><strong>' . esc_html__( 'Variation ID:', 'woocommerce-product-addons-extra-digital' ) . '</strong> ' . $var_id . '</div>', '', $addon_html );
 			}
 
 			echo $addon_html;

@@ -14,7 +14,7 @@ class WC_Product_Addons_Field_Custom extends WC_Product_Addons_Field {
 		// Required addon checks
 		if ( ! empty( $this->addon['required'] ) && '' === $posted ) {
 			/* translators: %s Name of the addon */
-			return new WP_Error( 'error', sprintf( __( '"%s" is a required field.', 'woocommerce-product-addons' ), $this->addon['name'] ) );
+			return new WP_Error( 'error', sprintf( __( '"%s" is a required field.', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'] ) );
 		}
 
 		if ( '1' == $this->addon['restrictions'] ) {
@@ -24,12 +24,12 @@ class WC_Product_Addons_Field_Custom extends WC_Product_Addons_Field {
 				case 'custom_textarea':
 					if ( ! empty( $this->addon['min'] ) && '' !== $posted && mb_strlen( $posted, 'UTF-8' ) < $this->addon['min'] ) {
 						/* translators: 1 Addon name 2 Minimum amount */
-						return new WP_Error( 'error', sprintf( __( 'The minimum characters required for "%1$s" is %2$s.', 'woocommerce-product-addons' ), $this->addon['name'], $this->addon['min'] ) );
+						return new WP_Error( 'error', sprintf( __( 'The minimum characters required for "%1$s" is %2$s.', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'], $this->addon['min'] ) );
 					}
 
 					if ( ! empty( $this->addon['max'] ) && '' !== $posted && mb_strlen( $posted, 'UTF-8' ) > $this->addon['max'] ) {
 						/* translators: 1 Addon name 2 Maximum amount */
-						return new WP_Error( 'error', sprintf( __( 'The maximum allowed characters for "%1$s" is %2$s.', 'woocommerce-product-addons' ), $this->addon['name'], $this->addon['max'] ) );
+						return new WP_Error( 'error', sprintf( __( 'The maximum allowed characters for "%1$s" is %2$s.', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'], $this->addon['max'] ) );
 					}
 					break;
 				case 'custom_price':
@@ -37,14 +37,14 @@ class WC_Product_Addons_Field_Custom extends WC_Product_Addons_Field {
 					if ( ! empty( $this->addon['min'] ) && '' !== $posted && $posted < $this->addon['min'] || ( isset( $this->addon['min'] ) && $posted < $this->addon['min'] ) ) {
 						if ( ! empty( $this->addon['required'] ) ) {
 							/* translators: 1 Addon name 2 minimum amount */
-							return new WP_Error( 'error', sprintf( __( 'The minimum amount required for "%1$s" is %2$s.', 'woocommerce-product-addons' ), $this->addon['name'], $this->addon['min'] ) );
+							return new WP_Error( 'error', sprintf( __( 'The minimum amount required for "%1$s" is %2$s.', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'], $this->addon['min'] ) );
 						}
 					}
 
 					if ( ! empty( $this->addon['max'] ) && '' !== $posted && $posted > $this->addon['max'] ) {
 						if ( ! empty( $this->addon['required'] ) ) {
 							/* translators: 1 Addon name 2 Maximum amount */
-							return new WP_Error( 'error', sprintf( __( 'The maximum allowed amount for "%1$s" is %2$s.', 'woocommerce-product-addons' ), $this->addon['name'], $this->addon['max'] ) );
+							return new WP_Error( 'error', sprintf( __( 'The maximum allowed amount for "%1$s" is %2$s.', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'], $this->addon['max'] ) );
 						}
 					}
 					break;
@@ -58,7 +58,7 @@ class WC_Product_Addons_Field_Custom extends WC_Product_Addons_Field {
 				$posted = absint( $posted );
 				if ( $posted < 0 ) {
 					/* translators: %s Addon name */
-					return new WP_Error( 'error', sprintf( __( 'Please enter a value greater than 0 for "%s".', 'woocommerce-product-addons' ), $this->addon['name'] ) );
+					return new WP_Error( 'error', sprintf( __( 'Please enter a value greater than 0 for "%s".', 'woocommerce-product-addons-extra-digital' ), $this->addon['name'] ) );
 				}
 				break;
 		}

@@ -14,7 +14,7 @@ $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc
 <div class="form-row form-row-image form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ); ?>">
 <div class="options">
 <?php if ( empty( $required ) ) { ?>
-	<a href="#" title="<?php echo esc_attr__( 'None', 'woocommerce-product-addons' ); ?>" class="wc-pao-addon-image-swatch" data-value="" data-price="">
+	<a href="#" title="<?php echo esc_attr__( 'None', 'woocommerce-product-addons-extra-digital' ); ?>" class="wc-pao-addon-image-swatch" data-value="" data-price="">
 		<img src="<?php echo esc_url( WC_Product_Addons_Helper::no_image_select_placeholder_src() ); ?>" />
 	</a>
 <?php } ?>
@@ -55,9 +55,9 @@ $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc
 </div>
 <select class="wc-pao-addon-image-swatch-select wc-pao-addon-field" name="addon-<?php echo sanitize_title( $field_name ); ?>">
 	<?php if ( empty( $required ) ) { ?>
-		<option value=""><?php esc_html_e( 'None', 'woocommerce-product-addons' ); ?></option>
+		<option value=""><?php esc_html_e( 'None', 'woocommerce-product-addons-extra-digital' ); ?></option>
 	<?php } else { ?>
-		<option value=""><?php esc_html_e( 'Select an option...', 'woocommerce-product-addons' ); ?></option>
+		<option value=""><?php esc_html_e( 'Select an option...', 'woocommerce-product-addons-extra-digital' ); ?></option>
 	<?php }
 
 	$loop = 0;

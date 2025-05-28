@@ -15,7 +15,7 @@ $current_value = isset( $_POST[ $addon_key ] ) && isset( $_POST[ $addon_key ][0]
 <?php if ( empty( $required ) ) { ?>
 	<p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ); ?>">
 		<label>
-			<input type="radio" class="wc-pao-addon-field wc-pao-addon-radio" value="" name="addon-<?php echo sanitize_title( $field_name ); ?>[]" />&nbsp;&nbsp;<?php esc_html_e( 'None', 'woocommerce-product-addons' ); ?>
+			<input type="radio" class="wc-pao-addon-field wc-pao-addon-radio" value="" name="addon-<?php echo sanitize_title( $field_name ); ?>[]" />&nbsp;&nbsp;<?php esc_html_e( 'None', 'woocommerce-product-addons-extra-digital' ); ?>
 		</label>
 	</p>
 <?php } ?>

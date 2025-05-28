@@ -27,5 +27,5 @@ if ( 'percentage_based' === $price_type ) {
 ?>
 
 <p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ); ?>">
-	<input type="file" class="wc-pao-addon-file-upload input-text wc-pao-addon-field" data-raw-price="<?php echo esc_attr( $price_raw ); ?>" data-price="<?php echo esc_attr( $price_display ); ?>" data-price-type="<?php echo esc_attr( $price_type ); ?>" name="addon-<?php echo sanitize_title( $field_name ); ?>" id="addon-<?php echo sanitize_title( $field_name ); ?>" <?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?> /> <small><?php echo sprintf( __( '(max file size %s)', 'woocommerce-product-addons' ), $max_size ) ?></small>
+	<input type="file" class="wc-pao-addon-file-upload input-text wc-pao-addon-field" data-raw-price="<?php echo esc_attr( $price_raw ); ?>" data-price="<?php echo esc_attr( $price_display ); ?>" data-price-type="<?php echo esc_attr( $price_type ); ?>" name="addon-<?php echo sanitize_title( $field_name ); ?>" id="addon-<?php echo sanitize_title( $field_name ); ?>" <?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?> /> <small><?php echo sprintf( __( '(max file size %s)', 'woocommerce-product-addons-extra-digital' ), $max_size ) ?></small>
 </p>

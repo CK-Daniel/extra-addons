@@ -25,15 +25,15 @@ $price_display     = apply_filters( 'woocommerce_product_addons_price',
 switch ( $restrictions_type ) {
 	case 'only_letters':
 		$attr .= ' pattern="[A-Za-z]+"';
-		$attr .= ' title="' . __( 'Only letters', 'woocommerce-product-addons' ) . '"';
+		$attr .= ' title="' . __( 'Only letters', 'woocommerce-product-addons-extra-digital' ) . '"';
 		break;
 	case 'only_numbers':
 		$attr .= ' pattern="[0-9]+"';
-		$attr .= ' title="' . __( 'Only numbers', 'woocommerce-product-addons' ) . '"';
+		$attr .= ' title="' . __( 'Only numbers', 'woocommerce-product-addons-extra-digital' ) . '"';
 		break;
 	case 'only_letters_numbers':
 		$attr .= 'pattern="[A-Za-z0-9-]+"';
-		$attr .= ' title="' . __( 'Only letters and numbers', 'woocommerce-product-addons' ) . '"';
+		$attr .= ' title="' . __( 'Only letters and numbers', 'woocommerce-product-addons-extra-digital' ) . '"';
 		break;
 }
 

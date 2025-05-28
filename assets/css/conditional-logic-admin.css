@@ -1,0 +1,266 @@
+/**
+ * Conditional Logic Admin Styles
+ */
+
+/* Container */
+.conditional-logic-container {
+	background: #f8f8f8;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 15px;
+	margin-top: 15px;
+}
+
+.conditional-logic-header {
+	margin-bottom: 15px;
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 10px;
+}
+
+.conditional-logic-header h4 {
+	margin: 0;
+	display: inline-block;
+}
+
+.enable-conditional-logic {
+	margin-left: 10px;
+}
+
+/* Condition Groups */
+.condition-groups {
+	margin-top: 15px;
+}
+
+.condition-group {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	margin-bottom: 15px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.group-header {
+	background: #f1f1f1;
+	padding: 10px 15px;
+	border-bottom: 1px solid #ddd;
+	display: flex;
+	align-items: center;
+	cursor: move;
+}
+
+.group-header h4 {
+	margin: 0;
+	flex: 1;
+}
+
+.group-handle {
+	margin-right: 10px;
+	color: #999;
+	cursor: move;
+}
+
+.remove-condition-group {
+	background: none;
+	border: none;
+	color: #a00;
+	cursor: pointer;
+	font-size: 20px;
+	padding: 0;
+}
+
+.remove-condition-group:hover {
+	color: #dc3232;
+}
+
+.group-content {
+	padding: 15px;
+}
+
+/* Conditions and Actions Sections */
+.conditions-section,
+.actions-section {
+	margin-bottom: 20px;
+}
+
+.conditions-section:last-child,
+.actions-section:last-child {
+	margin-bottom: 0;
+}
+
+.conditions-section h5,
+.actions-section h5 {
+	margin: 0 0 10px;
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #666;
+}
+
+/* Condition and Action Items */
+.condition-item,
+.action-item {
+	display: flex;
+	align-items: center;
+	margin-bottom: 10px;
+	padding: 10px;
+	background: #f9f9f9;
+	border: 1px solid #e5e5e5;
+	border-radius: 3px;
+}
+
+.condition-handle,
+.action-handle {
+	margin-right: 10px;
+	color: #999;
+	cursor: move;
+}
+
+.condition-type,
+.action-type {
+	margin-right: 10px;
+	min-width: 150px;
+}
+
+.condition-fields,
+.action-fields {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 10px;
+}
+
+.field-group {
+	display: flex;
+	align-items: center;
+}
+
+.field-group select,
+.field-group input {
+	margin: 0;
+}
+
+.remove-condition,
+.remove-action {
+	background: none;
+	border: none;
+	color: #a00;
+	cursor: pointer;
+	font-size: 16px;
+	padding: 0;
+	margin-left: 10px;
+}
+
+.remove-condition:hover,
+.remove-action:hover {
+	color: #dc3232;
+}
+
+/* Buttons */
+.add-condition-group,
+.add-condition,
+.add-action {
+	margin-top: 10px;
+}
+
+/* Sortable Placeholder */
+.sortable-placeholder {
+	border: 2px dashed #bbb;
+	background: #f0f0f0;
+	margin-bottom: 10px;
+	height: 50px;
+}
+
+/* Logic Operators */
+.logic-operator {
+	text-align: center;
+	margin: 10px 0;
+	font-weight: 600;
+	color: #666;
+}
+
+/* Field Specific Styles */
+.field-value input[type="text"],
+.field-value input[type="number"] {
+	min-width: 150px;
+}
+
+.field-target select,
+.field-property select {
+	min-width: 180px;
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+	.condition-item,
+	.action-item {
+		flex-wrap: wrap;
+	}
+	
+	.condition-fields,
+	.action-fields {
+		flex-wrap: wrap;
+		margin-top: 10px;
+		width: 100%;
+	}
+	
+	.field-group {
+		margin-bottom: 5px;
+	}
+}
+
+/* Animation */
+.condition-item,
+.action-item,
+.condition-group {
+	transition: all 0.3s ease;
+}
+
+/* Tooltips */
+.conditional-logic-help {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background: #999;
+	color: #fff;
+	border-radius: 50%;
+	text-align: center;
+	line-height: 16px;
+	font-size: 12px;
+	cursor: help;
+	margin-left: 5px;
+}
+
+.conditional-logic-help:hover {
+	background: #666;
+}
+
+/* Messages */
+.conditional-logic-message {
+	padding: 10px;
+	margin: 10px 0;
+	border-radius: 3px;
+}
+
+.conditional-logic-message.info {
+	background: #d9edf7;
+	border: 1px solid #bce8f1;
+	color: #31708f;
+}
+
+.conditional-logic-message.warning {
+	background: #fcf8e3;
+	border: 1px solid #faebcc;
+	color: #8a6d3b;
+}
+
+.conditional-logic-message.error {
+	background: #f2dede;
+	border: 1px solid #ebccd1;
+	color: #a94442;
+}
+
+/* Loading State */
+.conditional-logic-container.loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
