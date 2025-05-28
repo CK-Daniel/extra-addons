@@ -320,3 +320,422 @@
 .condition-group[data-priority="10"] {
 	border-left: 4px solid #00a32a;
 }
+
+/* =================================================================
+   Standalone Conditional Logic Admin Page Styles
+   ================================================================= */
+
+/* Override inline styles from HTML */
+.conditional-logic-admin-header + style {
+	display: none;
+}
+
+/* Tab Navigation */
+.conditional-logic-tabs .nav-tab-wrapper {
+	border-bottom: 1px solid #ccd0d4;
+	background: #fff;
+	padding: 0;
+}
+
+/* Tab Content Areas */
+.conditional-logic-tab-content {
+	background: #fff;
+	padding: 20px;
+	border: 1px solid #ccd0d4;
+	border-top: none;
+	box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+/* Global Rules Section */
+.global-rules-container,
+.product-rules-container,
+.category-rules-container {
+	margin-top: 20px;
+}
+
+/* Rule List Container */
+#global-rules-list,
+#product-rules-container .rules-list,
+#category-rules-container .rules-list {
+	margin-bottom: 20px;
+}
+
+/* Individual Rule Styling */
+.conditional-rule {
+	background: #f9f9f9;
+	border: 1px solid #e5e5e5;
+	margin-bottom: 20px;
+	border-radius: 4px;
+	transition: all 0.3s ease;
+}
+
+.conditional-rule:hover {
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.conditional-rule.disabled {
+	opacity: 0.6;
+}
+
+/* Rule Header */
+.conditional-rule .rule-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: #f1f1f1;
+	padding: 12px 15px;
+	border-bottom: 1px solid #e5e5e5;
+	border-radius: 4px 4px 0 0;
+}
+
+.conditional-rule .rule-header h4 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.rule-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.rule-toggle {
+	background: #7ad03a;
+	color: #fff;
+	padding: 4px 10px;
+	border-radius: 3px;
+	font-size: 12px;
+	cursor: pointer;
+	border: none;
+}
+
+.disabled .rule-toggle {
+	background: #999;
+}
+
+.rule-duplicate,
+.rule-delete {
+	color: #0073aa;
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.rule-delete {
+	color: #a00;
+}
+
+.rule-duplicate:hover {
+	color: #005177;
+}
+
+.rule-delete:hover {
+	color: #dc3232;
+}
+
+/* Rule Content */
+.rule-content {
+	padding: 20px;
+}
+
+.rule-section {
+	margin-bottom: 25px;
+}
+
+.rule-section:last-child {
+	margin-bottom: 0;
+}
+
+.rule-section label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 8px;
+	color: #23282d;
+}
+
+.rule-section input[type="number"],
+.rule-section select {
+	width: 100%;
+	max-width: 300px;
+}
+
+.rule-section .description {
+	margin-top: 5px;
+}
+
+/* Addon Selector */
+.addon-selector {
+	width: 100%;
+	max-width: 400px;
+}
+
+/* Conditions and Actions Containers */
+.conditions-section,
+.actions-section {
+	background: #f8f8f8;
+	padding: 15px;
+	border-radius: 4px;
+	border: 1px solid #e5e5e5;
+}
+
+.conditions-section h5,
+.actions-section h5 {
+	margin: 0 0 15px 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: #23282d;
+	text-transform: uppercase;
+}
+
+.conditions-container,
+.actions-container {
+	margin-bottom: 10px;
+}
+
+/* Condition and Action Items */
+.conditional-rule .condition-item,
+.conditional-rule .action-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	padding: 10px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.condition-fields,
+.action-fields {
+	display: flex;
+	gap: 10px;
+	flex: 1;
+	align-items: center;
+}
+
+.condition-fields select,
+.condition-fields input,
+.action-fields select,
+.action-fields input {
+	min-width: 120px;
+	max-width: 200px;
+}
+
+/* Add/Remove Buttons */
+.add-condition,
+.add-action {
+	font-size: 13px;
+}
+
+.remove-condition,
+.remove-action {
+	color: #a00;
+	text-decoration: none;
+	margin-left: auto;
+}
+
+.remove-condition:hover,
+.remove-action:hover {
+	color: #dc3232;
+	text-decoration: underline;
+}
+
+/* Product/Category Selectors */
+.product-selector,
+.category-selector {
+	margin: 20px 0;
+	padding: 15px;
+	background: #f8f8f8;
+	border: 1px solid #e5e5e5;
+	border-radius: 4px;
+}
+
+.product-selector label,
+.category-selector label {
+	display: inline-block;
+	margin-right: 10px;
+	font-weight: 600;
+}
+
+#product-select {
+	width: 300px;
+}
+
+/* Rule Builder Interface */
+.rule-builder-interface {
+	display: flex;
+	gap: 20px;
+	min-height: 500px;
+}
+
+.rule-builder-sidebar {
+	width: 280px;
+	background: #f9f9f9;
+	padding: 20px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.rule-builder-sidebar h3 {
+	margin: 0 0 15px 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* Draggable Elements */
+.rule-builder-sidebar .condition-type,
+.rule-builder-sidebar .action-type {
+	background: #fff;
+	border: 1px solid #ddd;
+	padding: 12px;
+	margin-bottom: 10px;
+	border-radius: 4px;
+	cursor: move;
+	transition: all 0.2s ease;
+}
+
+.rule-builder-sidebar .condition-type:hover,
+.rule-builder-sidebar .action-type:hover {
+	border-color: #0073aa;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	transform: translateY(-1px);
+}
+
+.rule-builder-sidebar .condition-type strong,
+.rule-builder-sidebar .action-type strong {
+	display: block;
+	margin-bottom: 4px;
+	color: #23282d;
+	font-size: 13px;
+}
+
+.rule-builder-sidebar .condition-type p,
+.rule-builder-sidebar .action-type p {
+	margin: 0;
+	font-size: 12px;
+	color: #666;
+}
+
+/* Canvas */
+.rule-builder-canvas {
+	flex: 1;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.canvas-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px 20px;
+	border-bottom: 1px solid #ddd;
+	background: #f9f9f9;
+}
+
+.canvas-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.canvas-content {
+	padding: 20px;
+	min-height: 400px;
+	position: relative;
+}
+
+.canvas-drop-zone {
+	border: 2px dashed #ccc;
+	border-radius: 4px;
+	padding: 40px;
+	text-align: center;
+	color: #999;
+	min-height: 350px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.canvas-drop-zone.drop-hover {
+	border-color: #0073aa;
+	background: #f0f8ff;
+}
+
+.canvas-element {
+	position: absolute;
+	background: #fff;
+	border: 2px solid #0073aa;
+	padding: 10px;
+	border-radius: 4px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	cursor: move;
+}
+
+/* Actions Bar */
+.conditional-logic-actions {
+	background: #f9f9f9;
+	padding: 15px 20px;
+	border: 1px solid #ddd;
+	border-top: none;
+	display: flex;
+	gap: 10px;
+}
+
+.conditional-logic-actions .button {
+	margin: 0;
+}
+
+/* Placeholder for sortable */
+.rule-placeholder {
+	background: #f0f8ff;
+	border: 2px dashed #0073aa;
+	margin-bottom: 20px;
+	height: 100px;
+}
+
+/* Select2 Overrides */
+.select2-container {
+	margin: 0 !important;
+}
+
+/* Notices */
+.conditional-logic-admin-header .notice {
+	margin: 10px 0;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.rule-builder-interface {
+		flex-direction: column;
+	}
+	
+	.rule-builder-sidebar {
+		width: 100%;
+		margin-bottom: 20px;
+	}
+	
+	.condition-fields,
+	.action-fields {
+		flex-wrap: wrap;
+	}
+	
+	.condition-fields select,
+	.condition-fields input,
+	.action-fields select,
+	.action-fields input {
+		width: 100%;
+		max-width: none;
+		margin-bottom: 5px;
+	}
+	
+	.rule-header {
+		flex-wrap: wrap;
+	}
+	
+	.rule-actions {
+		margin-top: 10px;
+		width: 100%;
+		justify-content: flex-end;
+	}
+}

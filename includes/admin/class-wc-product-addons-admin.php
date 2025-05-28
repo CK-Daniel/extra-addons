@@ -36,6 +36,12 @@ class WC_Product_Addons_Admin {
 
 		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
 		add_action( 'wp_ajax_wc_pao_get_addon_field', array( $this, 'ajax_get_addon_field' ) );
+		
+		// Conditional logic AJAX handlers
+		add_action( 'wp_ajax_wc_pao_save_conditional_rules', array( $this, 'ajax_save_conditional_rules' ) );
+		add_action( 'wp_ajax_wc_pao_load_conditional_rules', array( $this, 'ajax_load_conditional_rules' ) );
+		add_action( 'wp_ajax_wc_pao_test_conditional_rules', array( $this, 'ajax_test_conditional_rules' ) );
+		add_action( 'wp_ajax_wc_pao_get_addon_list', array( $this, 'ajax_get_addon_list' ) );
 	}
 
 	/**
@@ -709,5 +715,160 @@ class WC_Product_Addons_Admin {
 		}
 
 		return ( $a['position'] < $b['position'] ) ? -1 : 1;
+	}
+	
+	/**
+	 * AJAX: Save conditional logic rules
+	 */
+	public function ajax_save_conditional_rules() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'nonce' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		$rules = isset( $_POST['rules'] ) ? $_POST['rules'] : array();
+		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'global';
+		
+		// Save rules to database
+		$result = update_option( 'wc_pao_conditional_rules_' . $context, $rules );
+		
+		if ( $result ) {
+			wp_send_json_success( array(
+				'message' => __( 'Rules saved successfully', 'woocommerce-product-addons-extra-digital' )
+			) );
+		} else {
+			wp_send_json_error( array(
+				'message' => __( 'Error saving rules', 'woocommerce-product-addons-extra-digital' )
+			) );
+		}
+	}
+	
+	/**
+	 * AJAX: Load conditional logic rules
+	 */
+	public function ajax_load_conditional_rules() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'nonce' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'global';
+		$context_id = isset( $_POST['context_id'] ) ? absint( $_POST['context_id'] ) : 0;
+		
+		// Load rules from database
+		$option_key = 'wc_pao_conditional_rules_' . $context;
+		if ( $context_id ) {
+			$option_key .= '_' . $context_id;
+		}
+		
+		$rules = get_option( $option_key, array() );
+		
+		wp_send_json_success( array(
+			'rules' => $rules
+		) );
+	}
+	
+	/**
+	 * AJAX: Test conditional logic rules
+	 */
+	public function ajax_test_conditional_rules() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'nonce' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		$rules = isset( $_POST['rules'] ) ? $_POST['rules'] : array();
+		
+		// Validate rules structure
+		$errors = array();
+		$warnings = array();
+		
+		foreach ( $rules as $rule_id => $rule ) {
+			// Check required fields
+			if ( empty( $rule['target'] ) ) {
+				$errors[] = sprintf( __( 'Rule %s: No target addon selected', 'woocommerce-product-addons-extra-digital' ), $rule_id );
+			}
+			
+			if ( empty( $rule['conditions'] ) ) {
+				$errors[] = sprintf( __( 'Rule %s: No conditions defined', 'woocommerce-product-addons-extra-digital' ), $rule_id );
+			}
+			
+			if ( empty( $rule['actions'] ) ) {
+				$errors[] = sprintf( __( 'Rule %s: No actions defined', 'woocommerce-product-addons-extra-digital' ), $rule_id );
+			}
+			
+			// Check for circular dependencies
+			if ( ! empty( $rule['conditions'] ) ) {
+				foreach ( $rule['conditions'] as $condition ) {
+					if ( $condition['type'] === 'rule' && $condition['target_rule'] === $rule_id ) {
+						$errors[] = sprintf( __( 'Rule %s: Circular dependency detected', 'woocommerce-product-addons-extra-digital' ), $rule_id );
+					}
+				}
+			}
+		}
+		
+		if ( ! empty( $errors ) ) {
+			wp_send_json_error( array(
+				'errors' => $errors,
+				'warnings' => $warnings
+			) );
+		} else {
+			wp_send_json_success( array(
+				'message' => __( 'All rules validated successfully', 'woocommerce-product-addons-extra-digital' ),
+				'warnings' => $warnings
+			) );
+		}
+	}
+	
+	/**
+	 * AJAX: Get addon list for selectors
+	 */
+	public function ajax_get_addon_list() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'nonce' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'global';
+		$product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+		
+		$addons = array();
+		
+		if ( $context === 'global' || $context === 'category' ) {
+			// Get global addon groups
+			$global_groups = WC_Product_Addons_Groups::get_all_global_groups();
+			
+			foreach ( $global_groups as $group ) {
+				if ( ! empty( $group['addons'] ) ) {
+					foreach ( $group['addons'] as $addon ) {
+						$addons[] = array(
+							'id' => sanitize_title( $addon['name'] ),
+							'name' => $addon['name'],
+							'type' => $addon['type'],
+							'group' => $group['name']
+						);
+					}
+				}
+			}
+		} elseif ( $context === 'product' && $product_id ) {
+			// Get product-specific addons
+			$product_addons = WC_Product_Addons_Helper::get_product_addons( $product_id );
+			
+			foreach ( $product_addons as $addon ) {
+				$addons[] = array(
+					'id' => sanitize_title( $addon['name'] ),
+					'name' => $addon['name'],
+					'type' => $addon['type']
+				);
+			}
+		}
+		
+		wp_send_json_success( array(
+			'addons' => $addons
+		) );
 	}
 }
