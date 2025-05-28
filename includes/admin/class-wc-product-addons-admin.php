@@ -182,7 +182,7 @@ class WC_Product_Addons_Admin {
 		
 		// Load conditional logic scripts on the conditional logic admin page
 		if ( $is_conditional_logic_page ) {
-			wp_enqueue_script( 'wc-pao-conditional-logic-admin', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic-admin' . $suffix . '.js', array( 'jquery', 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-droppable', 'wc-enhanced-select' ), WC_PRODUCT_ADDONS_VERSION, true );
+			wp_enqueue_script( 'wc-pao-conditional-logic-admin', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic-admin.js', array( 'jquery', 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-droppable', 'wc-enhanced-select' ), WC_PRODUCT_ADDONS_VERSION, true );
 			wp_enqueue_style( 'wc-pao-conditional-logic-admin-css', WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/conditional-logic-admin.css', array(), WC_PRODUCT_ADDONS_VERSION );
 			
 			wp_localize_script(
