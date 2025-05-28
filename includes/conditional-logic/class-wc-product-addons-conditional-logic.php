@@ -63,6 +63,15 @@ class WC_Product_Addons_Conditional_Logic {
 	}
 
 	/**
+	 * Get singleton instance (alias for get_instance)
+	 *
+	 * @return WC_Product_Addons_Conditional_Logic
+	 */
+	public static function instance() {
+		return self::get_instance();
+	}
+
+	/**
 	 * Constructor
 	 */
 	private function __construct() {
