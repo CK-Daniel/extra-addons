@@ -295,6 +295,11 @@
 				case 'date':
 					fields.find('.field-property, .field-operator, .field-value').show();
 					break;
+
+				case 'rule':
+					fields.find('.field-target, .field-property, .field-operator, .field-value').show();
+					this.populateRuleTargets(fields.find('.field-target select'));
+					break;
 			}
 
 			// Update operator options
@@ -364,6 +369,26 @@
 		},
 
 		/**
+		 * Populate rule targets (other addons for rule dependencies)
+		 */
+		populateRuleTargets: function(select) {
+			var options = '<option value="">Select an addon</option>';
+			var currentAddonName = select.closest('.woocommerce_product_addon').find('.addon_name').val();
+			
+			// Get all addons in the form except the current one
+			$('.woocommerce_product_addon').each(function() {
+				var addon = $(this);
+				var name = addon.find('.addon_name').val();
+				
+				if (name && name !== currentAddonName) {
+					options += '<option value="' + name + '">' + name + '</option>';
+				}
+			});
+
+			select.html(options);
+		},
+
+		/**
 		 * Update operator options based on condition type
 		 */
 		updateOperatorOptions: function(condition, type) {
@@ -376,7 +401,8 @@
 				product: ['equals', 'not_equals', 'greater_than', 'less_than', 'in', 'not_in'],
 				cart: ['equals', 'not_equals', 'greater_than', 'less_than', 'contains', 'not_contains'],
 				user: ['equals', 'not_equals', 'in', 'not_in', 'contains', 'not_contains'],
-				date: ['equals', 'not_equals', 'greater_than', 'less_than', 'between', 'not_between']
+				date: ['equals', 'not_equals', 'greater_than', 'less_than', 'between', 'not_between'],
+				rule: ['equals', 'not_equals', 'is_visible', 'is_hidden', 'is_required', 'is_not_required', 'has_price_modified', 'has_options_modified']
 			};
 
 			var operatorLabels = {
@@ -393,7 +419,13 @@
 				in: 'is in',
 				not_in: 'is not in',
 				between: 'is between',
-				not_between: 'is not between'
+				not_between: 'is not between',
+				is_visible: 'is visible',
+				is_hidden: 'is hidden',
+				is_required: 'is required',
+				is_not_required: 'is not required',
+				has_price_modified: 'has price modified',
+				has_options_modified: 'has options modified'
 			};
 
 			// Build options
@@ -477,6 +509,7 @@
 						<option value="cart">Cart Property</option>
 						<option value="user">User Property</option>
 						<option value="date">Date & Time</option>
+						<option value="rule">Other Rule State</option>
 					</select>
 					<div class="condition-fields">
 						<div class="field-group field-target" style="display:none;">

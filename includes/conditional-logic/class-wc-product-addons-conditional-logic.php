@@ -112,6 +112,7 @@ class WC_Product_Addons_Conditional_Logic {
 			'cart'      => 'WC_Product_Addons_Condition_Cart',
 			'user'      => 'WC_Product_Addons_Condition_User',
 			'date'      => 'WC_Product_Addons_Condition_Date',
+			'rule'      => 'WC_Product_Addons_Condition_Rule',
 			'location'  => 'WC_Product_Addons_Condition_Location',
 			'inventory' => 'WC_Product_Addons_Condition_Inventory',
 		);
@@ -445,7 +446,7 @@ class WC_Product_Addons_Conditional_Logic {
 	}
 
 	/**
-	 * AJAX handler for condition evaluation
+	 * AJAX handler for condition evaluation with cascading support
 	 */
 	public function ajax_evaluate_conditions() {
 		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
@@ -462,30 +463,178 @@ class WC_Product_Addons_Conditional_Logic {
 		$context = $this->get_evaluation_context();
 		$context['selections'] = $selections;
 		
-		$results = array();
+		// Evaluate with cascading support
+		$results = $this->evaluate_cascading_conditions( $addon_data, $context );
 		
+		wp_send_json_success( $results );
+	}
+
+	/**
+	 * Evaluate conditions with cascading rule support
+	 *
+	 * @param array $addon_data Array of addon data with conditional logic
+	 * @param array $context    Evaluation context
+	 * @return array Results array
+	 */
+	private function evaluate_cascading_conditions( $addon_data, $context ) {
+		$max_iterations = 10; // Prevent infinite loops
+		$iteration = 0;
+		$results = array();
+		$previous_state = array();
+		
+		// Initialize results
 		foreach ( $addon_data as $addon ) {
-			if ( isset( $addon['conditional_logic'] ) ) {
-				$addon_results = array(
-					'visible'       => true,
-					'required'      => isset( $addon['required'] ) ? $addon['required'] : false,
-					'price_modifiers' => array(),
-					'option_modifiers' => array(),
-				);
+			$results[ $addon['name'] ] = array(
+				'visible'         => true,
+				'required'        => isset( $addon['required'] ) ? $addon['required'] : false,
+				'price_modifiers' => array(),
+				'option_modifiers' => array(),
+				'modifications'   => array(),
+			);
+		}
+		
+		do {
+			$iteration++;
+			$state_changed = false;
+			
+			// Store current state to compare
+			$current_state = json_encode( $results );
+			
+			if ( $current_state !== $previous_state ) {
+				$state_changed = true;
+				$previous_state = $current_state;
+			}
+			
+			// Update context with current rule results
+			$context['rule_results'] = $results;
+			$context['iteration'] = $iteration;
+			
+			// Evaluate all rules in priority order
+			$prioritized_rules = $this->get_prioritized_rules( $addon_data );
+			
+			foreach ( $prioritized_rules as $rule_data ) {
+				$addon_name = $rule_data['addon_name'];
+				$rule = $rule_data['rule'];
 				
-				foreach ( $addon['conditional_logic'] as $rule ) {
-					if ( $this->evaluate_conditions( $rule['conditions'], $context ) ) {
-						foreach ( $rule['actions'] as $action ) {
-							$this->apply_action_to_results( $addon_results, $action, $context );
+				if ( $this->evaluate_conditions( $rule['conditions'], $context ) ) {
+					foreach ( $rule['actions'] as $action ) {
+						// Check if this action affects other addons (cascading)
+						if ( $this->is_cascading_action( $action ) ) {
+							$this->apply_cascading_action( $results, $action, $context );
+						} else {
+							// Apply to current addon
+							$this->apply_action_to_results( $results[ $addon_name ], $action, $context );
 						}
 					}
 				}
-				
-				$results[ $addon['name'] ] = $addon_results;
+			}
+			
+		} while ( $state_changed && $iteration < $max_iterations );
+		
+		// Log if we hit max iterations (potential circular dependency)
+		if ( $iteration >= $max_iterations ) {
+			error_log( 'WC Product Addons: Maximum iterations reached in cascading evaluation. Possible circular dependency.' );
+		}
+		
+		return $results;
+	}
+
+	/**
+	 * Get rules sorted by priority for proper dependency handling
+	 *
+	 * @param array $addon_data Array of addon data
+	 * @return array Prioritized rules
+	 */
+	private function get_prioritized_rules( $addon_data ) {
+		$rules = array();
+		
+		foreach ( $addon_data as $addon ) {
+			if ( isset( $addon['conditional_logic'] ) ) {
+				foreach ( $addon['conditional_logic'] as $rule ) {
+					$priority = isset( $rule['priority'] ) ? $rule['priority'] : 10;
+					$rules[] = array(
+						'addon_name' => $addon['name'],
+						'rule'       => $rule,
+						'priority'   => $priority,
+					);
+				}
 			}
 		}
 		
-		wp_send_json_success( $results );
+		// Sort by priority (higher priority = lower number, executes first)
+		usort( $rules, function( $a, $b ) {
+			return $a['priority'] <=> $b['priority'];
+		} );
+		
+		return $rules;
+	}
+
+	/**
+	 * Check if an action is cascading (affects other addons)
+	 *
+	 * @param array $action Action configuration
+	 * @return bool
+	 */
+	private function is_cascading_action( $action ) {
+		$config = isset( $action['config'] ) ? $action['config'] : $action;
+		$target = isset( $config['target'] ) ? $config['target'] : 'self';
+		
+		return in_array( $target, array( 'all', 'other', 'category', 'except' ) );
+	}
+
+	/**
+	 * Apply cascading action that affects multiple addons
+	 *
+	 * @param array $results All addon results
+	 * @param array $action  Action configuration
+	 * @param array $context Evaluation context
+	 */
+	private function apply_cascading_action( &$results, $action, $context ) {
+		$config = isset( $action['config'] ) ? $action['config'] : $action;
+		$target = isset( $config['target'] ) ? $config['target'] : 'self';
+		
+		foreach ( $results as $addon_name => &$addon_results ) {
+			$should_apply = false;
+			
+			switch ( $target ) {
+				case 'all':
+					$should_apply = true;
+					break;
+					
+				case 'other':
+					$target_addon = isset( $config['target_addon'] ) ? $config['target_addon'] : '';
+					$should_apply = ( $addon_name === $target_addon );
+					break;
+					
+				case 'category':
+					// This would require addon category metadata
+					$should_apply = $this->addon_in_category( $addon_name, $config, $context );
+					break;
+					
+				case 'except':
+					$except_addons = isset( $config['except_addons'] ) ? $config['except_addons'] : array();
+					$should_apply = ! in_array( $addon_name, $except_addons );
+					break;
+			}
+			
+			if ( $should_apply ) {
+				$this->apply_action_to_results( $addon_results, $action, $context );
+			}
+		}
+	}
+
+	/**
+	 * Check if addon is in specified category
+	 *
+	 * @param string $addon_name Addon name
+	 * @param array  $config     Action configuration
+	 * @param array  $context    Evaluation context
+	 * @return bool
+	 */
+	private function addon_in_category( $addon_name, $config, $context ) {
+		// This would be implemented based on how addon categories are defined
+		// For now, return false
+		return false;
 	}
 
 	/**

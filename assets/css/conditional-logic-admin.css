@@ -264,3 +264,59 @@
 	opacity: 0.6;
 	pointer-events: none;
 }
+
+/* Rule Dependencies */
+.condition-item[data-type="rule"] {
+	border-left: 3px solid #0073aa;
+	background: #f0f8ff;
+}
+
+.condition-item[data-type="rule"] .condition-type {
+	background: #e8f4f8;
+	border: 1px solid #0073aa;
+}
+
+.conditional-logic-note {
+	background: #e8f4f8;
+	border: 1px solid #0073aa;
+	border-radius: 3px;
+	padding: 8px 12px;
+	margin: 10px 0;
+	font-size: 12px;
+	color: #0073aa;
+}
+
+.rule-dependency-warning {
+	background: #fff3cd;
+	border: 1px solid #ffeaa7;
+	color: #856404;
+	padding: 8px 12px;
+	border-radius: 3px;
+	margin: 5px 0;
+	font-size: 12px;
+}
+
+.rule-dependency-warning::before {
+	content: "⚠️ ";
+	margin-right: 5px;
+}
+
+/* Priority indicators */
+.condition-group[data-priority="1"],
+.condition-group[data-priority="2"],
+.condition-group[data-priority="3"] {
+	border-left: 4px solid #dc3232;
+}
+
+.condition-group[data-priority="4"],
+.condition-group[data-priority="5"],
+.condition-group[data-priority="6"] {
+	border-left: 4px solid #ffb900;
+}
+
+.condition-group[data-priority="7"],
+.condition-group[data-priority="8"],
+.condition-group[data-priority="9"],
+.condition-group[data-priority="10"] {
+	border-left: 4px solid #00a32a;
+}

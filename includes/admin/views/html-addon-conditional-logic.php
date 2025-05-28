@@ -123,6 +123,7 @@ function wc_product_addons_render_condition( $addon_index, $group_index, $condit
 			<option value="cart" <?php selected( $type, 'cart' ); ?>><?php esc_html_e( 'Cart Property', 'woocommerce-product-addons-extra-digital' ); ?></option>
 			<option value="user" <?php selected( $type, 'user' ); ?>><?php esc_html_e( 'User Property', 'woocommerce-product-addons-extra-digital' ); ?></option>
 			<option value="date" <?php selected( $type, 'date' ); ?>><?php esc_html_e( 'Date & Time', 'woocommerce-product-addons-extra-digital' ); ?></option>
+			<option value="rule" <?php selected( $type, 'rule' ); ?>><?php esc_html_e( 'Other Rule State', 'woocommerce-product-addons-extra-digital' ); ?></option>
 		</select>
 		
 		<div class="condition-fields">
