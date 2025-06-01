@@ -42,6 +42,11 @@ register_activation_hook( __FILE__, 'woocommerce_product_addons_activation' );
 function woocommerce_product_addons_activation() {
 	set_transient( 'wc_pao_activation_notice', true, 60 );
 	set_transient( 'wc_pao_pre_wc_30_notice', true, 60 );
+	
+	// Ensure conditional logic tables are created on activation
+	if ( class_exists( 'WC_Product_Addons_Install' ) ) {
+		WC_Product_Addons_Install::init();
+	}
 }
 
 // Subscribe to automated translations.

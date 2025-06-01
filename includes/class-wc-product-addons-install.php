@@ -33,6 +33,9 @@ class WC_Product_Addons_Install {
 
 		self::migration_3_0_product();
 
+		// Install conditional logic tables if not exists - ALWAYS check
+		self::create_conditional_logic_tables();
+
 		// Check the version before running.
 		if ( ! defined( 'IFRAME_REQUEST' ) && ( $installed_version !== WC_PRODUCT_ADDONS_VERSION ) ) {
 			if ( ! defined( 'WC_PAO_INSTALLING' ) ) {
@@ -44,9 +47,6 @@ class WC_Product_Addons_Install {
 			if ( version_compare( $installed_version, '3.0', '<' ) ) {
 				self::migration_3_0();
 			}
-
-			// Install conditional logic tables if not exists
-			self::create_conditional_logic_tables();
 
 			do_action( 'wc_pao_updated' );
 		}

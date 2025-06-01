@@ -1278,11 +1278,21 @@ class WC_Product_Addons_Admin {
 		$debug_info['table_exists'] = $table_exists;
 		
 		if ( ! $table_exists ) {
-			wp_send_json_error( array( 
-				'message' => __( 'Database table does not exist', 'woocommerce-product-addons' ),
-				'debug' => $debug_info,
-				'error_details' => 'Table ' . $table_name . ' not found'
-			) );
+			// Try to create the tables automatically
+			$debug_info['auto_create_attempt'] = true;
+			$this->create_conditional_logic_tables();
+			
+			// Check again
+			$table_exists_after = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name;
+			$debug_info['table_exists_after_creation'] = $table_exists_after;
+			
+			if ( ! $table_exists_after ) {
+				wp_send_json_error( array( 
+					'message' => __( 'Database table does not exist and could not be created automatically', 'woocommerce-product-addons' ),
+					'debug' => $debug_info,
+					'error_details' => 'Table ' . $table_name . ' not found. Please go to Products → Setup Database to create tables manually.'
+				) );
+			}
 		}
 		
 		if ( $rule_id ) {
