@@ -1072,6 +1072,39 @@
     border-left: 4px solid #2271b1;
 }
 
+/* Enhanced Addon Selection Styling */
+.addon-select optgroup {
+    font-weight: 600;
+    color: #23282d;
+    background: #f8f9fa;
+    padding: 8px 12px;
+}
+
+.addon-select optgroup[label*="Global"] {
+    background: #e7f2fd;
+    color: #2271b1;
+}
+
+.addon-select optgroup[label*="Product-specific"] {
+    background: #edf9ed;
+    color: #1d4b1d;
+}
+
+.addon-select option {
+    padding: 6px 12px;
+    background: white;
+}
+
+/* Enhance option text styling */
+.option-select {
+    border-left: 3px solid #2271b1;
+}
+
+.option-select:focus {
+    border-left-color: #135e96;
+    box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.2);
+}
+
 /* Responsive */
 @media screen and (max-width: 782px) {
     .scope-options {

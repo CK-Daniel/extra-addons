@@ -381,7 +381,7 @@
                 
                 // Add global addons group
                 if (self.addonsData.global && Object.keys(self.addonsData.global).length > 0) {
-                    var $globalGroup = $('<optgroup label="Global Add-ons"></optgroup>');
+                    var $globalGroup = $('<optgroup label="🌍 Global Add-ons"></optgroup>');
                     $.each(self.addonsData.global, function(key, addon) {
                         $globalGroup.append('<option value="' + key + '">' + addon.name + ' (' + addon.group_name + ')</option>');
                     });
@@ -392,9 +392,9 @@
                 if (self.addonsData.products && Object.keys(self.addonsData.products).length > 0) {
                     $.each(self.addonsData.products, function(productId, productData) {
                         if (productData.addons && Object.keys(productData.addons).length > 0) {
-                            var $productGroup = $('<optgroup label="' + productData.product_name + ' Add-ons"></optgroup>');
+                            var $productGroup = $('<optgroup label="📦 ' + productData.product_name + ' (Product-specific)"></optgroup>');
                             $.each(productData.addons, function(key, addon) {
-                                $productGroup.append('<option value="' + key + '">' + addon.name + '</option>');
+                                $productGroup.append('<option value="' + key + '">' + addon.name + ' (' + addon.product_name + ')</option>');
                             });
                             $select.append($productGroup);
                         }
@@ -600,7 +600,7 @@
             
             // Add global addons group
             if (this.addonsData.global && Object.keys(this.addonsData.global).length > 0) {
-                html += '<optgroup label="Global Add-ons">';
+                html += '<optgroup label="🌍 Global Add-ons">';
                 $.each(this.addonsData.global, function(key, addon) {
                     html += '<option value="' + key + '">' + addon.name + ' (' + addon.group_name + ')</option>';
                 });
@@ -611,9 +611,9 @@
             if (this.addonsData.products && Object.keys(this.addonsData.products).length > 0) {
                 $.each(this.addonsData.products, function(productId, productData) {
                     if (productData.addons && Object.keys(productData.addons).length > 0) {
-                        html += '<optgroup label="' + productData.product_name + ' Add-ons">';
+                        html += '<optgroup label="📦 ' + productData.product_name + ' (Product-specific)">';
                         $.each(productData.addons, function(key, addon) {
-                            html += '<option value="' + key + '">' + addon.name + '</option>';
+                            html += '<option value="' + key + '">' + addon.name + ' (' + addon.product_name + ')</option>';
                         });
                         html += '</optgroup>';
                     }

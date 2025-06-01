@@ -64,6 +64,38 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="rule-builder">
             <h2><?php esc_html_e( 'Rule Configuration', 'woocommerce-product-addons' ); ?></h2>
             
+            <!-- Addon Context Selector - Affects entire rule page -->
+            <div class="addon-context-selector global-context">
+                <h3><?php esc_html_e( 'Add-on Context', 'woocommerce-product-addons' ); ?></h3>
+                <p class="description"><?php esc_html_e( 'Select which add-ons to show in all condition and action dropdowns on this page.', 'woocommerce-product-addons' ); ?></p>
+                
+                <div class="context-options">
+                    <label>
+                        <input type="radio" name="addon_context" value="all" checked>
+                        <span><?php esc_html_e( 'All Add-ons', 'woocommerce-product-addons' ); ?></span>
+                        <small><?php esc_html_e( 'Show global add-ons + add-ons from all products', 'woocommerce-product-addons' ); ?></small>
+                    </label>
+                    
+                    <label>
+                        <input type="radio" name="addon_context" value="global_only">
+                        <span><?php esc_html_e( 'Global Add-ons Only', 'woocommerce-product-addons' ); ?></span>
+                        <small><?php esc_html_e( 'Show only global add-on groups', 'woocommerce-product-addons' ); ?></small>
+                    </label>
+                    
+                    <label>
+                        <input type="radio" name="addon_context" value="specific_product">
+                        <span><?php esc_html_e( 'Specific Product', 'woocommerce-product-addons' ); ?></span>
+                        <small><?php esc_html_e( 'Show global add-ons + add-ons from a specific product', 'woocommerce-product-addons' ); ?></small>
+                    </label>
+                </div>
+                
+                <div class="product-selector" id="product-selector" style="display:none;">
+                    <label><?php esc_html_e( 'Select Product:', 'woocommerce-product-addons' ); ?></label>
+                    <select class="wc-product-search-context" style="width: 100%;" data-placeholder="<?php esc_attr_e( 'Search for a product...', 'woocommerce-product-addons' ); ?>">
+                    </select>
+                </div>
+            </div>
+            
             <!-- Rule Name -->
             <div class="rule-field">
                 <label><?php esc_html_e( 'Rule Name:', 'woocommerce-product-addons' ); ?></label>
@@ -77,37 +109,6 @@ if ( ! defined( 'ABSPATH' ) ) {
                 
                 <div class="condition-groups-container" id="condition-groups-container">
                     <!-- Condition groups will be added here dynamically -->
-                </div>
-                
-                <div class="addon-context-selector">
-                    <h4><?php esc_html_e( 'Addon Context', 'woocommerce-product-addons' ); ?></h4>
-                    <p class="description"><?php esc_html_e( 'Select which addons to show in condition/action dropdowns.', 'woocommerce-product-addons' ); ?></p>
-                    
-                    <div class="context-options">
-                        <label>
-                            <input type="radio" name="addon_context" value="all" checked>
-                            <span><?php esc_html_e( 'All Addons', 'woocommerce-product-addons' ); ?></span>
-                            <small><?php esc_html_e( 'Show global addons + addons from all products', 'woocommerce-product-addons' ); ?></small>
-                        </label>
-                        
-                        <label>
-                            <input type="radio" name="addon_context" value="global_only">
-                            <span><?php esc_html_e( 'Global Addons Only', 'woocommerce-product-addons' ); ?></span>
-                            <small><?php esc_html_e( 'Show only global addon groups', 'woocommerce-product-addons' ); ?></small>
-                        </label>
-                        
-                        <label>
-                            <input type="radio" name="addon_context" value="specific_product">
-                            <span><?php esc_html_e( 'Specific Product', 'woocommerce-product-addons' ); ?></span>
-                            <small><?php esc_html_e( 'Show global addons + addons from a specific product', 'woocommerce-product-addons' ); ?></small>
-                        </label>
-                    </div>
-                    
-                    <div class="product-selector" id="product-selector" style="display:none;">
-                        <label><?php esc_html_e( 'Select Product:', 'woocommerce-product-addons' ); ?></label>
-                        <select class="wc-product-search-context" style="width: 100%;" data-placeholder="<?php esc_attr_e( 'Search for a product...', 'woocommerce-product-addons' ); ?>">
-                        </select>
-                    </div>
                 </div>
                 
                 <div class="condition-controls">
