@@ -817,6 +817,10 @@
 .action-config .target-level {
     order: 1;
     flex: 0 0 auto;
+    background: #2271b1;
+    color: white;
+    border: 1px solid #2271b1;
+    font-weight: 600;
 }
 
 .action-config .addon-select {
@@ -829,6 +833,11 @@
     order: 3;
     flex: 1 1 180px;
     min-width: 180px;
+    display: none; /* Hidden by default - shown when "Specific Option" is selected */
+}
+
+.action-config .option-select:not([style*="display: none"]) {
+    display: block !important;
 }
 
 .action-config input,

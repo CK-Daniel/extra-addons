@@ -1018,7 +1018,10 @@ class WC_Product_Addons_Admin {
 		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( -1 );
+			wp_send_json_error( array( 
+				'message' => __( 'Permission denied', 'woocommerce-product-addons' ),
+				'error_details' => 'User does not have manage_woocommerce capability'
+			) );
 		}
 		
 		global $wpdb;
@@ -1026,9 +1029,38 @@ class WC_Product_Addons_Admin {
 		$rule_id = isset( $_POST['rule_id'] ) ? absint( $_POST['rule_id'] ) : 0;
 		$rule_data = isset( $_POST['rule_data'] ) ? $_POST['rule_data'] : array();
 		
+		// Debug information
+		$debug_info = array(
+			'rule_id' => $rule_id,
+			'rule_data_received' => $rule_data,
+			'post_data_keys' => array_keys( $_POST ),
+			'table_exists' => false,
+			'wpdb_errors' => array()
+		);
+		
 		// Validate rule data
 		if ( empty( $rule_data['name'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Rule name is required', 'woocommerce-product-addons' ) ) );
+			wp_send_json_error( array( 
+				'message' => __( 'Rule name is required', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'Rule name field is empty'
+			) );
+		}
+		
+		if ( empty( $rule_data['conditions'] ) ) {
+			wp_send_json_error( array( 
+				'message' => __( 'At least one condition is required', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'No conditions provided'
+			) );
+		}
+		
+		if ( empty( $rule_data['actions'] ) ) {
+			wp_send_json_error( array( 
+				'message' => __( 'At least one action is required', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'No actions provided'
+			) );
 		}
 		
 		// Prepare data for database
@@ -1045,7 +1077,27 @@ class WC_Product_Addons_Admin {
 		$conditions = wp_json_encode( $rule_data['conditions'] );
 		$actions = wp_json_encode( $rule_data['actions'] );
 		
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error( array( 
+				'message' => __( 'Error encoding rule data', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'JSON encoding failed: ' . json_last_error_msg()
+			) );
+		}
+		
 		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
+		
+		// Check if table exists
+		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name;
+		$debug_info['table_exists'] = $table_exists;
+		
+		if ( ! $table_exists ) {
+			wp_send_json_error( array( 
+				'message' => __( 'Database table does not exist', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'Table ' . $table_name . ' not found'
+			) );
+		}
 		
 		if ( $rule_id ) {
 			// Update existing rule
@@ -1062,33 +1114,56 @@ class WC_Product_Addons_Admin {
 				array( '%s', '%s', '%s', '%s', '%s' ),
 				array( '%d' )
 			);
+			
+			$debug_info['operation'] = 'update';
+			$debug_info['wpdb_result'] = $result;
+			$debug_info['wpdb_last_error'] = $wpdb->last_error;
+			$debug_info['wpdb_last_query'] = $wpdb->last_query;
 		} else {
 			// Insert new rule(s)
+			$debug_info['operation'] = 'insert';
+			$debug_info['scope_targets'] = $scope_targets;
+			
 			foreach ( $scope_targets as $scope_id ) {
+				$insert_data = array(
+					'rule_name' => sanitize_text_field( $rule_data['name'] ),
+					'rule_type' => $rule_type,
+					'scope_id' => $scope_id,
+					'conditions' => $conditions,
+					'actions' => $actions,
+					'created_by' => get_current_user_id(),
+					'created_at' => current_time( 'mysql' ),
+					'updated_at' => current_time( 'mysql' )
+				);
+				
 				$result = $wpdb->insert(
 					$table_name,
-					array(
-						'rule_name' => sanitize_text_field( $rule_data['name'] ),
-						'rule_type' => $rule_type,
-						'scope_id' => $scope_id,
-						'conditions' => $conditions,
-						'actions' => $actions,
-						'created_by' => get_current_user_id(),
-						'created_at' => current_time( 'mysql' ),
-						'updated_at' => current_time( 'mysql' )
-					),
+					$insert_data,
 					array( '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%s' )
 				);
+				
+				$debug_info['insert_data'] = $insert_data;
+				$debug_info['wpdb_result'] = $result;
+				$debug_info['wpdb_last_error'] = $wpdb->last_error;
+				$debug_info['wpdb_last_query'] = $wpdb->last_query;
+				$debug_info['wpdb_insert_id'] = $wpdb->insert_id;
+				
+				if ( false === $result ) {
+					break; // Stop on first error
+				}
 			}
 		}
 		
 		if ( false !== $result ) {
 			wp_send_json_success( array(
-				'message' => __( 'Rule saved successfully', 'woocommerce-product-addons' )
+				'message' => __( 'Rule saved successfully', 'woocommerce-product-addons' ),
+				'debug' => $debug_info
 			) );
 		} else {
 			wp_send_json_error( array(
-				'message' => __( 'Error saving rule', 'woocommerce-product-addons' )
+				'message' => __( 'Database error while saving rule', 'woocommerce-product-addons' ),
+				'debug' => $debug_info,
+				'error_details' => 'Database operation failed. Last error: ' . $wpdb->last_error
 			) );
 		}
 	}

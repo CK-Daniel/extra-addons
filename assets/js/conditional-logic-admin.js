@@ -520,6 +520,13 @@
                 placeholder: wc_product_addons_params.i18n_select_addon,
                 allowClear: true
             });
+            
+            // Initialize target level display if target level selector exists
+            var $targetLevel = $config.find('.target-level');
+            if ($targetLevel.length) {
+                // Set default to "addon" and trigger change to set initial state
+                $targetLevel.val('addon').trigger('change');
+            }
         },
         
         // Condition configuration templates
@@ -587,7 +594,7 @@
         buildAddonSelectHtml: function(includeOptions, includeTargetLevel) {
             var html = '';
             
-            // Add target level selector if requested
+            // Add target level selector if requested - FIRST
             if (includeTargetLevel) {
                 html += '<select class="target-level" name="action_target_level">';
                 html += '<option value="addon">' + wc_product_addons_params.i18n_entire_addon + '</option>';
@@ -688,7 +695,7 @@
                     this.updateAddonOptions($addonSelect);
                 }
             } else {
-                $optionSelect.hide();
+                $optionSelect.hide().val(''); // Hide and clear the value
             }
         },
         
@@ -726,6 +733,9 @@
                 return;
             }
             
+            // Add debug information to the page
+            this.showDebugInfo('Rule Data Being Sent:', ruleData);
+            
             // Show loading state
             $('.save-rule').addClass('loading').prop('disabled', true);
             
@@ -739,16 +749,46 @@
                     rule_data: ruleData
                 },
                 success: function(response) {
+                    self.showDebugInfo('AJAX Response:', response);
+                    
                     if (response.success) {
                         self.showNotice(wc_product_addons_params.i18n_rule_saved, 'success');
                         self.resetRuleBuilder();
                         self.loadExistingRules();
                     } else {
-                        self.showNotice(response.data.message || wc_product_addons_params.i18n_error_saving, 'error');
+                        var errorMessage = wc_product_addons_params.i18n_error_saving;
+                        var debugInfo = '';
+                        
+                        if (response.data) {
+                            if (response.data.message) {
+                                errorMessage = response.data.message;
+                            }
+                            if (response.data.debug) {
+                                debugInfo = ' Debug: ' + JSON.stringify(response.data.debug);
+                            }
+                            if (response.data.error_details) {
+                                debugInfo += ' Details: ' + response.data.error_details;
+                            }
+                        }
+                        
+                        self.showNotice(errorMessage + debugInfo, 'error');
                     }
                 },
-                error: function() {
-                    self.showNotice(wc_product_addons_params.i18n_error_saving, 'error');
+                error: function(xhr, status, error) {
+                    var errorDetails = 'AJAX Error - Status: ' + status + ', Error: ' + error;
+                    if (xhr.responseText) {
+                        errorDetails += ', Response: ' + xhr.responseText.substring(0, 500);
+                    }
+                    
+                    self.showDebugInfo('AJAX Error Details:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText,
+                        readyState: xhr.readyState,
+                        statusText: xhr.statusText
+                    });
+                    
+                    self.showNotice(wc_product_addons_params.i18n_error_saving + ' - ' + errorDetails, 'error');
                 },
                 complete: function() {
                     $('.save-rule').removeClass('loading').prop('disabled', false);
@@ -889,6 +929,21 @@
                     $('.wc-pao-notice').fadeOut();
                 }, 3000);
             }
+        },
+        
+        // Show debug information on the page
+        showDebugInfo: function(title, data) {
+            // Remove existing debug info
+            $('.wc-pao-debug').remove();
+            
+            var debugContent = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            var debugBox = '<div class="wc-pao-debug" style="background: #f0f0f0; border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 4px;">' +
+                          '<h4 style="margin: 0 0 10px 0; color: #333;">' + title + '</h4>' +
+                          '<div style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">' + debugContent + '</div>' +
+                          '<button type="button" onclick="$(this).closest(\'.wc-pao-debug\').remove();" style="margin-top: 10px; padding: 5px 10px; background: #dc3232; color: white; border: none; border-radius: 3px; cursor: pointer;">Close Debug Info</button>' +
+                          '</div>';
+            
+            $('.wc-addons-conditional-logic-wrap').prepend(debugBox);
         },
         
         // Reset rule builder to initial state
