@@ -57,6 +57,9 @@ class WC_Product_Addons_Admin {
 		
 		// Add conditional logic submenu
 		$conditional_page = add_submenu_page( 'edit.php?post_type=product', __( 'Conditional Logic', 'woocommerce-product-addons-extra-digital' ), __( 'Conditional Logic', 'woocommerce-product-addons-extra-digital' ), 'manage_woocommerce', 'addon-conditional-logic', array( $this, 'conditional_logic_admin' ) );
+		
+		// Add database setup submenu for debugging
+		$setup_page = add_submenu_page( 'edit.php?post_type=product', __( 'Setup Database', 'woocommerce-product-addons-extra-digital' ), __( 'Setup Database', 'woocommerce-product-addons-extra-digital' ), 'manage_woocommerce', 'addon-setup-database', array( $this, 'setup_database_admin' ) );
 
 		if (
 			! class_exists( 'Features' ) ||
@@ -753,6 +756,189 @@ class WC_Product_Addons_Admin {
 		}
 
 		include_once WC_PRODUCT_ADDONS_PLUGIN_PATH . '/includes/admin/views/html-conditional-logic-admin.php';
+	}
+	
+	/**
+	 * Database Setup admin page
+	 */
+	public function setup_database_admin() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( __( 'You do not have sufficient permissions to access this page.', 'woocommerce-product-addons-extra-digital' ) );
+		}
+		
+		global $wpdb;
+		
+		// Handle form submission
+		if ( isset( $_POST['create_tables'] ) && wp_verify_nonce( $_POST['setup_nonce'], 'setup_database' ) ) {
+			$this->create_conditional_logic_tables();
+			echo '<div class="notice notice-success"><p>' . __( 'Database tables created successfully!', 'woocommerce-product-addons-extra-digital' ) . '</p></div>';
+		}
+		
+		// Check table status
+		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
+		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name;
+		
+		$usage_table = $wpdb->prefix . 'wc_product_addon_rule_usage';
+		$usage_table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$usage_table}'" ) === $usage_table;
+		
+		$formulas_table = $wpdb->prefix . 'wc_product_addon_formulas';
+		$formulas_table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$formulas_table}'" ) === $formulas_table;
+		
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Product Add-ons Database Setup', 'woocommerce-product-addons-extra-digital' ); ?></h1>
+			
+			<div class="card" style="max-width: 800px;">
+				<h2><?php esc_html_e( 'Database Table Status', 'woocommerce-product-addons-extra-digital' ); ?></h2>
+				
+				<table class="widefat">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Table Name', 'woocommerce-product-addons-extra-digital' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'woocommerce-product-addons-extra-digital' ); ?></th>
+							<th><?php esc_html_e( 'Description', 'woocommerce-product-addons-extra-digital' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code><?php echo esc_html( $table_name ); ?></code></td>
+							<td>
+								<?php if ( $table_exists ) : ?>
+									<span style="color: green;">✅ <?php esc_html_e( 'Exists', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php else : ?>
+									<span style="color: red;">❌ <?php esc_html_e( 'Missing', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td><?php esc_html_e( 'Main conditional logic rules table', 'woocommerce-product-addons-extra-digital' ); ?></td>
+						</tr>
+						<tr>
+							<td><code><?php echo esc_html( $usage_table ); ?></code></td>
+							<td>
+								<?php if ( $usage_table_exists ) : ?>
+									<span style="color: green;">✅ <?php esc_html_e( 'Exists', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php else : ?>
+									<span style="color: red;">❌ <?php esc_html_e( 'Missing', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td><?php esc_html_e( 'Rule usage tracking table', 'woocommerce-product-addons-extra-digital' ); ?></td>
+						</tr>
+						<tr>
+							<td><code><?php echo esc_html( $formulas_table ); ?></code></td>
+							<td>
+								<?php if ( $formulas_table_exists ) : ?>
+									<span style="color: green;">✅ <?php esc_html_e( 'Exists', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php else : ?>
+									<span style="color: red;">❌ <?php esc_html_e( 'Missing', 'woocommerce-product-addons-extra-digital' ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td><?php esc_html_e( 'Reusable formulas table', 'woocommerce-product-addons-extra-digital' ); ?></td>
+						</tr>
+					</tbody>
+				</table>
+				
+				<?php if ( ! $table_exists || ! $usage_table_exists || ! $formulas_table_exists ) : ?>
+					<h3><?php esc_html_e( 'Create Missing Tables', 'woocommerce-product-addons-extra-digital' ); ?></h3>
+					<p><?php esc_html_e( 'Some database tables are missing. Click the button below to create them.', 'woocommerce-product-addons-extra-digital' ); ?></p>
+					
+					<form method="post">
+						<?php wp_nonce_field( 'setup_database', 'setup_nonce' ); ?>
+						<input type="submit" name="create_tables" class="button button-primary" value="<?php esc_attr_e( 'Create Database Tables', 'woocommerce-product-addons-extra-digital' ); ?>" />
+					</form>
+				<?php else : ?>
+					<div class="notice notice-success inline">
+						<p><?php esc_html_e( 'All database tables exist! Your conditional logic system should work properly.', 'woocommerce-product-addons-extra-digital' ); ?></p>
+					</div>
+				<?php endif; ?>
+				
+				<h3><?php esc_html_e( 'Debug Information', 'woocommerce-product-addons-extra-digital' ); ?></h3>
+				<p><strong><?php esc_html_e( 'Database Prefix:', 'woocommerce-product-addons-extra-digital' ); ?></strong> <code><?php echo esc_html( $wpdb->prefix ); ?></code></p>
+				<p><strong><?php esc_html_e( 'Plugin Version:', 'woocommerce-product-addons-extra-digital' ); ?></strong> <code><?php echo esc_html( WC_PRODUCT_ADDONS_VERSION ); ?></code></p>
+				<p><strong><?php esc_html_e( 'Installed Version:', 'woocommerce-product-addons-extra-digital' ); ?></strong> <code><?php echo esc_html( get_option( 'wc_pao_version', 'Not set' ) ); ?></code></p>
+				<p><strong><?php esc_html_e( 'Conditional Logic DB Version:', 'woocommerce-product-addons-extra-digital' ); ?></strong> <code><?php echo esc_html( get_option( 'wc_pao_conditional_logic_db_version', 'Not set' ) ); ?></code></p>
+			</div>
+		</div>
+		<?php
+	}
+	
+	/**
+	 * Create conditional logic database tables
+	 */
+	private function create_conditional_logic_tables() {
+		global $wpdb;
+
+		$wpdb->hide_errors();
+
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		// Table for storing conditional logic rules
+		$sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}wc_product_addon_rules (
+			rule_id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			rule_name VARCHAR(255) NOT NULL,
+			rule_type ENUM('product', 'global', 'category', 'tag') DEFAULT 'product',
+			scope_id BIGINT(20) UNSIGNED DEFAULT NULL,
+			conditions LONGTEXT NOT NULL,
+			actions LONGTEXT NOT NULL,
+			priority INT(11) DEFAULT 10,
+			enabled TINYINT(1) DEFAULT 1,
+			start_date DATETIME DEFAULT NULL,
+			end_date DATETIME DEFAULT NULL,
+			usage_count BIGINT(20) DEFAULT 0,
+			created_by BIGINT(20) UNSIGNED DEFAULT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (rule_id),
+			KEY idx_rule_type_scope (rule_type, scope_id),
+			KEY idx_enabled_priority (enabled, priority),
+			KEY idx_dates (start_date, end_date)
+		) $charset_collate;";
+
+		dbDelta( $sql );
+
+		// Table for tracking rule usage
+		$sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}wc_product_addon_rule_usage (
+			usage_id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			rule_id BIGINT(20) UNSIGNED NOT NULL,
+			order_id BIGINT(20) UNSIGNED DEFAULT NULL,
+			user_id BIGINT(20) UNSIGNED DEFAULT NULL,
+			session_id VARCHAR(255) DEFAULT NULL,
+			product_id BIGINT(20) UNSIGNED NOT NULL,
+			addon_name VARCHAR(255) NOT NULL,
+			original_price DECIMAL(10,2) DEFAULT NULL,
+			modified_price DECIMAL(10,2) DEFAULT NULL,
+			modification_details LONGTEXT,
+			used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (usage_id),
+			KEY idx_rule_id (rule_id),
+			KEY idx_order_id (order_id),
+			KEY idx_user_id (user_id),
+			KEY idx_product_addon (product_id, addon_name),
+			KEY idx_used_at (used_at)
+		) $charset_collate;";
+
+		dbDelta( $sql );
+
+		// Table for storing reusable formulas
+		$sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}wc_product_addon_formulas (
+			formula_id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			formula_name VARCHAR(255) NOT NULL,
+			formula_expression TEXT NOT NULL,
+			variables LONGTEXT NOT NULL,
+			validation_rules LONGTEXT DEFAULT NULL,
+			description TEXT,
+			category VARCHAR(100) DEFAULT NULL,
+			is_global TINYINT(1) DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (formula_id),
+			UNIQUE KEY idx_formula_name (formula_name),
+			KEY idx_category (category)
+		) $charset_collate;";
+
+		dbDelta( $sql );
+
+		// Set database version for conditional logic
+		update_option( 'wc_pao_conditional_logic_db_version', '1.0' );
 	}
 
 	/**
