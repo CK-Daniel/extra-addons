@@ -46,6 +46,7 @@ class WC_Product_Addons_Admin {
 		add_action( 'wp_ajax_wc_product_addons_duplicate_rule', array( $this, 'ajax_duplicate_rule' ) );
 		add_action( 'wp_ajax_wc_product_addons_get_all_addons', array( $this, 'ajax_get_all_addons' ) );
 		add_action( 'wp_ajax_wc_product_addons_search_categories', array( $this, 'ajax_search_categories' ) );
+		add_action( 'wp_ajax_wc_product_addons_update_rule_priorities', array( $this, 'ajax_update_rule_priorities' ) );
 	}
 
 	/**
@@ -209,6 +210,7 @@ class WC_Product_Addons_Admin {
 					'get_addons_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
 					'search_categories_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
 					'search_products_nonce' => wp_create_nonce( 'woocommerce_json_search_products' ),
+					'update_priorities_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
 					'i18n_confirm_delete_rule' => __( 'Are you sure you want to delete this rule?', 'woocommerce-product-addons' ),
 					'i18n_rule_saved' => __( 'Rule saved successfully', 'woocommerce-product-addons' ),
 					'i18n_error_saving' => __( 'Error saving rule', 'woocommerce-product-addons' ),
@@ -223,6 +225,16 @@ class WC_Product_Addons_Admin {
 					'i18n_inactive' => __( 'Inactive', 'woocommerce-product-addons' ),
 					'i18n_select_addon' => __( 'Select add-on...', 'woocommerce-product-addons' ),
 					'i18n_select_option' => __( 'Select option...', 'woocommerce-product-addons' ),
+					'i18n_entire_addon' => __( 'Entire Add-on', 'woocommerce-product-addons' ),
+					'i18n_specific_option' => __( 'Specific Option', 'woocommerce-product-addons' ),
+					'i18n_new_price' => __( 'New price...', 'woocommerce-product-addons' ),
+					'i18n_increase_by' => __( 'Increase by fixed amount', 'woocommerce-product-addons' ),
+					'i18n_decrease_by' => __( 'Decrease by fixed amount', 'woocommerce-product-addons' ),
+					'i18n_increase_percent' => __( 'Increase by percentage', 'woocommerce-product-addons' ),
+					'i18n_decrease_percent' => __( 'Decrease by percentage', 'woocommerce-product-addons' ),
+					'i18n_amount' => __( 'Amount...', 'woocommerce-product-addons' ),
+					'i18n_new_label' => __( 'New label...', 'woocommerce-product-addons' ),
+					'i18n_new_description' => __( 'New description...', 'woocommerce-product-addons' ),
 					'i18n_equals' => __( 'equals', 'woocommerce-product-addons' ),
 					'i18n_not_equals' => __( 'not equals', 'woocommerce-product-addons' ),
 					'i18n_contains' => __( 'contains', 'woocommerce-product-addons' ),
@@ -1094,7 +1106,7 @@ class WC_Product_Addons_Admin {
 		global $wpdb;
 		
 		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
-		$rules = $wpdb->get_results( "SELECT * FROM {$table_name} ORDER BY rule_type, priority, rule_id DESC" );
+		$rules = $wpdb->get_results( "SELECT * FROM {$table_name} ORDER BY rule_type, priority ASC, rule_id DESC" );
 		
 		$formatted_rules = array();
 		
@@ -1139,6 +1151,7 @@ class WC_Product_Addons_Admin {
 				'name' => $rule->rule_name,
 				'scope' => $rule->rule_type,
 				'scope_label' => $scope_label,
+				'priority' => $rule->priority,
 				'status' => $rule->enabled ? 'active' : 'inactive',
 				'status_label' => $rule->enabled ? __( 'Active', 'woocommerce-product-addons' ) : __( 'Inactive', 'woocommerce-product-addons' ),
 				'conditions_summary' => implode( ' AND ', $conditions_summary ),
@@ -1329,7 +1342,12 @@ class WC_Product_Addons_Admin {
 		}
 		
 		$product_id = isset( $_GET['product_id'] ) ? absint( $_GET['product_id'] ) : 0;
-		$addons = array();
+		$include_products = isset( $_GET['include_products'] ) ? (bool) $_GET['include_products'] : true;
+		$addons = array(
+			'global' => array(),
+			'products' => array(),
+			'organized' => array()
+		);
 		
 		// Get global addon groups
 		$global_groups = WC_Product_Addons_Groups::get_all_global_groups();
@@ -1352,50 +1370,109 @@ class WC_Product_Addons_Admin {
 						}
 					}
 					
-					$addons[$addon_id] = array(
-						'name' => $addon['name'] . ' (Global: ' . $group['name'] . ')',
+					$addon_data = array(
+						'name' => $addon['name'],
+						'display_name' => $addon['name'] . ' (Global: ' . $group['name'] . ')',
 						'type' => $addon['type'],
 						'field_name' => isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $addon['name'] ),
 						'options' => $options,
 						'source' => 'global',
-						'group_id' => $group['id']
+						'group_id' => $group['id'],
+						'group_name' => $group['name']
 					);
+					
+					$addons['global'][$addon_id] = $addon_data;
+					$addons['organized'][$addon_id] = $addon_data;
 				}
 			}
 		}
 		
-		// Get product-specific addons if product_id is provided
-		if ( $product_id > 0 ) {
-			$product_addons = get_post_meta( $product_id, '_product_addons', true );
-			if ( is_array( $product_addons ) ) {
-				foreach ( $product_addons as $index => $addon ) {
-					$addon_id = sanitize_title( $addon['name'] ) . '_product_' . $product_id . '_' . $index;
-					$options = array();
-					
-					// Process addon options if they exist
-					if ( ! empty( $addon['options'] ) && is_array( $addon['options'] ) ) {
-						foreach ( $addon['options'] as $opt_index => $option ) {
-							$options[] = array(
-								'value' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
-								'label' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
-								'price' => isset( $option['price'] ) ? $option['price'] : 0
-							);
-						}
-					}
-					
-					$addons[$addon_id] = array(
-						'name' => $addon['name'] . ' (Product-specific)',
-						'type' => $addon['type'],
-						'field_name' => isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $addon['name'] ),
-						'options' => $options,
-						'source' => 'product',
-						'product_id' => $product_id
-					);
+		// Get product-specific addons from multiple products if requested
+		if ( $include_products ) {
+			if ( $product_id > 0 ) {
+				// Get specific product addons
+				$this->add_product_addons_to_list( $addons, $product_id );
+			} else {
+				// Get addons from products that have them
+				$products_with_addons = $this->get_products_with_addons();
+				foreach ( $products_with_addons as $prod_id ) {
+					$this->add_product_addons_to_list( $addons, $prod_id );
 				}
 			}
 		}
 		
 		wp_send_json_success( $addons );
+	}
+	
+	/**
+	 * Add product-specific addons to the addons list
+	 */
+	private function add_product_addons_to_list( &$addons, $product_id ) {
+		$product = wc_get_product( $product_id );
+		if ( ! $product ) {
+			return;
+		}
+		
+		$product_addons = get_post_meta( $product_id, '_product_addons', true );
+		if ( is_array( $product_addons ) && ! empty( $product_addons ) ) {
+			$product_title = $product->get_name();
+			
+			foreach ( $product_addons as $index => $addon ) {
+				$addon_id = sanitize_title( $addon['name'] ) . '_product_' . $product_id . '_' . $index;
+				$options = array();
+				
+				// Process addon options if they exist
+				if ( ! empty( $addon['options'] ) && is_array( $addon['options'] ) ) {
+					foreach ( $addon['options'] as $opt_index => $option ) {
+						$options[] = array(
+							'value' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
+							'label' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
+							'price' => isset( $option['price'] ) ? $option['price'] : 0
+						);
+					}
+				}
+				
+				$addon_data = array(
+					'name' => $addon['name'],
+					'display_name' => $addon['name'] . ' (Product: ' . $product_title . ')',
+					'type' => $addon['type'],
+					'field_name' => isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $addon['name'] ),
+					'options' => $options,
+					'source' => 'product',
+					'product_id' => $product_id,
+					'product_name' => $product_title
+				);
+				
+				if ( ! isset( $addons['products'][$product_id] ) ) {
+					$addons['products'][$product_id] = array(
+						'product_name' => $product_title,
+						'addons' => array()
+					);
+				}
+				
+				$addons['products'][$product_id]['addons'][$addon_id] = $addon_data;
+				$addons['organized'][$addon_id] = $addon_data;
+			}
+		}
+	}
+	
+	/**
+	 * Get products that have addons
+	 */
+	private function get_products_with_addons( $limit = 50 ) {
+		global $wpdb;
+		
+		$product_ids = $wpdb->get_col( $wpdb->prepare(
+			"SELECT DISTINCT post_id 
+			FROM {$wpdb->postmeta} 
+			WHERE meta_key = '_product_addons' 
+			AND meta_value != '' 
+			AND meta_value != 'a:0:{}' 
+			LIMIT %d",
+			$limit
+		) );
+		
+		return array_map( 'absint', $product_ids );
 	}
 	
 	/**
@@ -1473,5 +1550,68 @@ class WC_Product_Addons_Admin {
 		$type_label = isset( $type_labels[$action['type']] ) ? $type_labels[$action['type']] : $action['type'];
 		
 		return $type_label;
+	}
+	
+	/**
+	 * AJAX: Update rule priorities
+	 */
+	public function ajax_update_rule_priorities() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		global $wpdb;
+		
+		$rule_ids = isset( $_POST['rule_ids'] ) ? array_map( 'absint', $_POST['rule_ids'] ) : array();
+		
+		if ( empty( $rule_ids ) ) {
+			wp_send_json_error( array( 'message' => __( 'No rules provided', 'woocommerce-product-addons' ) ) );
+		}
+		
+		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
+		
+		// Update priorities - lower position in array = higher priority (higher number)
+		// This way rules at the bottom of the list have higher priority
+		$total_rules = count( $rule_ids );
+		$success_count = 0;
+		
+		foreach ( $rule_ids as $index => $rule_id ) {
+			// Calculate priority: last item gets highest priority
+			$priority = $total_rules - $index;
+			
+			$result = $wpdb->update(
+				$table_name,
+				array( 
+					'priority' => $priority,
+					'updated_at' => current_time( 'mysql' )
+				),
+				array( 'rule_id' => $rule_id ),
+				array( '%d', '%s' ),
+				array( '%d' )
+			);
+			
+			if ( false !== $result ) {
+				$success_count++;
+			}
+		}
+		
+		if ( $success_count === count( $rule_ids ) ) {
+			wp_send_json_success( array(
+				'message' => sprintf( 
+					__( 'Updated priorities for %d rules', 'woocommerce-product-addons' ),
+					$success_count
+				)
+			) );
+		} else {
+			wp_send_json_error( array(
+				'message' => sprintf(
+					__( 'Updated %d of %d rules', 'woocommerce-product-addons' ),
+					$success_count,
+					count( $rule_ids )
+				)
+			) );
+		}
 	}
 }

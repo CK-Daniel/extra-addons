@@ -79,6 +79,37 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <!-- Condition groups will be added here dynamically -->
                 </div>
                 
+                <div class="addon-context-selector">
+                    <h4><?php esc_html_e( 'Addon Context', 'woocommerce-product-addons' ); ?></h4>
+                    <p class="description"><?php esc_html_e( 'Select which addons to show in condition/action dropdowns.', 'woocommerce-product-addons' ); ?></p>
+                    
+                    <div class="context-options">
+                        <label>
+                            <input type="radio" name="addon_context" value="all" checked>
+                            <span><?php esc_html_e( 'All Addons', 'woocommerce-product-addons' ); ?></span>
+                            <small><?php esc_html_e( 'Show global addons + addons from all products', 'woocommerce-product-addons' ); ?></small>
+                        </label>
+                        
+                        <label>
+                            <input type="radio" name="addon_context" value="global_only">
+                            <span><?php esc_html_e( 'Global Addons Only', 'woocommerce-product-addons' ); ?></span>
+                            <small><?php esc_html_e( 'Show only global addon groups', 'woocommerce-product-addons' ); ?></small>
+                        </label>
+                        
+                        <label>
+                            <input type="radio" name="addon_context" value="specific_product">
+                            <span><?php esc_html_e( 'Specific Product', 'woocommerce-product-addons' ); ?></span>
+                            <small><?php esc_html_e( 'Show global addons + addons from a specific product', 'woocommerce-product-addons' ); ?></small>
+                        </label>
+                    </div>
+                    
+                    <div class="product-selector" id="product-selector" style="display:none;">
+                        <label><?php esc_html_e( 'Select Product:', 'woocommerce-product-addons' ); ?></label>
+                        <select class="wc-product-search-context" style="width: 100%;" data-placeholder="<?php esc_attr_e( 'Search for a product...', 'woocommerce-product-addons' ); ?>">
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="condition-controls">
                     <button type="button" class="button add-condition"><?php esc_html_e( '+ Add Condition', 'woocommerce-product-addons' ); ?></button>
                     <button type="button" class="button add-condition-group"><?php esc_html_e( '+ Add Condition Group', 'woocommerce-product-addons' ); ?></button>
@@ -222,10 +253,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 <script type="text/template" id="rule-item-template">
     <div class="rule-item" data-rule-id="{rule_id}" data-scope="{scope}">
-        <div class="rule-header">
-            <h4 class="rule-title">{rule_name}</h4>
-            <div class="rule-meta">
-                <span class="rule-scope-badge {scope}">{scope_label}</span>
+        <div class="drag-handle" title="<?php esc_attr_e( 'Drag to reorder rules (lower position = higher priority)', 'woocommerce-product-addons' ); ?>">
+            <span class="dashicons dashicons-move"></span>
+        </div>
+        <div class="rule-content">
+            <div class="rule-header">
+                <h4 class="rule-title">{rule_name}</h4>
+                <div class="rule-meta">
+                    <span class="rule-priority" title="<?php esc_attr_e( 'Rule Priority', 'woocommerce-product-addons' ); ?>">#{priority}</span>
+                    <span class="rule-scope-badge {scope}">{scope_label}</span>
                 <span class="rule-status {status}">{status_label}</span>
             </div>
             <div class="rule-actions">
@@ -242,15 +278,15 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <span class="dashicons dashicons-trash"></span>
                 </button>
             </div>
-        </div>
-        <div class="rule-summary">
-            <div class="conditions-summary">
-                <strong><?php esc_html_e( 'IF:', 'woocommerce-product-addons' ); ?></strong>
-                <span>{conditions_summary}</span>
-            </div>
-            <div class="actions-summary">
-                <strong><?php esc_html_e( 'THEN:', 'woocommerce-product-addons' ); ?></strong>
-                <span>{actions_summary}</span>
+            <div class="rule-summary">
+                <div class="conditions-summary">
+                    <strong><?php esc_html_e( 'IF:', 'woocommerce-product-addons' ); ?></strong>
+                    <span>{conditions_summary}</span>
+                </div>
+                <div class="actions-summary">
+                    <strong><?php esc_html_e( 'THEN:', 'woocommerce-product-addons' ); ?></strong>
+                    <span>{actions_summary}</span>
+                </div>
             </div>
         </div>
     </div>
