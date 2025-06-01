@@ -122,8 +122,6 @@ class WC_Product_Addons_Conditional_Logic {
 			'user'      => 'WC_Product_Addons_Condition_User',
 			'date'      => 'WC_Product_Addons_Condition_Date',
 			'rule'      => 'WC_Product_Addons_Condition_Rule',
-			'location'  => 'WC_Product_Addons_Condition_Location',
-			'inventory' => 'WC_Product_Addons_Condition_Inventory',
 		);
 
 		foreach ( $default_conditions as $type => $class_name ) {
@@ -718,7 +716,7 @@ class WC_Product_Addons_Conditional_Logic {
 			wp_enqueue_script(
 				'wc-product-addons-conditional-logic',
 				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic.js',
-				array( 'jquery', 'woocommerce-addons' ),
+				array( 'jquery', 'woocommerce-addons-extra-digital' ),
 				WC_PRODUCT_ADDONS_VERSION,
 				true
 			);
@@ -731,5 +729,4 @@ class WC_Product_Addons_Conditional_Logic {
 	}
 }
 
-// Initialize the conditional logic system
-WC_Product_Addons_Conditional_Logic::get_instance();
+// Note: This class is initialized in the main plugin file after all dependencies are loaded

@@ -15,10 +15,14 @@
         // Cache for addons data
         addonsCache: {},
         
+        // Condition group counter
+        conditionGroupCounter: 0,
+        
         // Initialize
         init: function() {
             this.bindEvents();
             this.initializeSelect2();
+            this.initializeTabs();
             this.loadExistingRules();
             this.loadAddonsData();
         },
@@ -35,7 +39,24 @@
             // Add condition/action buttons
             $(document).on('click', '.add-condition', function(e) {
                 e.preventDefault();
-                self.addCondition();
+                self.addConditionGroup();
+            });
+            
+            $(document).on('click', '.add-condition-group', function(e) {
+                e.preventDefault();
+                self.addConditionGroup();
+            });
+            
+            $(document).on('click', '.add-condition-to-group', function(e) {
+                e.preventDefault();
+                var groupId = $(this).closest('.condition-group').data('group-id');
+                self.addConditionToGroup(groupId);
+            });
+            
+            $(document).on('click', '.remove-group', function(e) {
+                e.preventDefault();
+                var groupId = $(this).closest('.condition-group').data('group-id');
+                self.removeConditionGroup(groupId);
             });
             
             $(document).on('click', '.add-action', function(e) {
@@ -66,6 +87,11 @@
             // Action type change
             $(document).on('change', '.action-type', function() {
                 self.updateActionConfig($(this));
+            });
+            
+            // Handle addon selection to populate options
+            $(document).on('change', '.addon-select', function() {
+                self.updateAddonOptions($(this));
             });
             
             // Save rule button
@@ -172,6 +198,65 @@
                 minimumInputLength: 3
             });
         },
+        
+        // Initialize tabs
+        initializeTabs: function() {
+            var self = this;
+            
+            // Tab switching
+            $('.nav-tab').on('click', function(e) {
+                e.preventDefault();
+                var target = $(this).attr('href');
+                
+                // Update tab appearance
+                $('.nav-tab').removeClass('nav-tab-active');
+                $(this).addClass('nav-tab-active');
+                
+                // Show/hide tab content
+                $('.tab-content').removeClass('active');
+                $(target).addClass('active');
+                
+                // Load rules when switching to existing rules tab
+                if (target === '#existing-rules') {
+                    self.loadExistingRules();
+                }
+            });
+        },
+        
+        // Add condition group
+        addConditionGroup: function() {
+            var groupId = 'group-' + (++this.conditionGroupCounter);
+            var template = $('#condition-group-template').html();
+            var $group = $(template);
+            
+            $group.attr('data-group-id', groupId);
+            $('#condition-groups-container').append($group);
+            
+            // Add first condition to the group
+            this.addConditionToGroup(groupId);
+            
+            return groupId;
+        },
+        
+        // Add condition to specific group
+        addConditionToGroup: function(groupId) {
+            var template = $('#condition-template').html();
+            var $condition = $(template);
+            var conditionId = 'condition-' + Date.now();
+            
+            $condition.attr('data-condition-id', conditionId);
+            $('[data-group-id="' + groupId + '"] .conditions-in-group').append($condition);
+            
+            return conditionId;
+        },
+        
+        // Remove condition group
+        removeConditionGroup: function(groupId) {
+            $('[data-group-id="' + groupId + '"]').fadeOut(200, function() {
+                $(this).remove();
+            });
+        },
+        
         
         // Handle scope change
         handleScopeChange: function(scope) {
@@ -393,6 +478,23 @@
             return html;
         },
         
+        getOptionVisibilityActionConfig: function() {
+            var html = '<select class="addon-select" name="action_addon">';
+            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
+            
+            // Add addons from cache
+            $.each(this.addonsCache, function(key, addon) {
+                html += '<option value="' + key + '">' + addon.name + '</option>';
+            });
+            
+            html += '</select>';
+            html += '<select class="option-select" name="action_option" style="display:none;">';
+            html += '<option value="">' + wc_product_addons_params.i18n_select_option + '</option>';
+            html += '</select>';
+            
+            return html;
+        },
+        
         getSetPriceActionConfig: function() {
             var html = '<select class="addon-select" name="action_addon">';
             html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
@@ -427,6 +529,75 @@
             html += '<input type="number" class="value-input" name="action_value" placeholder="' + wc_product_addons_params.i18n_amount + '" step="0.01">';
             
             return html;
+        },
+        
+        getRequirementActionConfig: function() {
+            var html = '<select class="addon-select" name="action_addon">';
+            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
+            
+            // Add addons from cache
+            $.each(this.addonsCache, function(key, addon) {
+                html += '<option value="' + key + '">' + addon.name + '</option>';
+            });
+            
+            html += '</select>';
+            
+            return html;
+        },
+        
+        getSetLabelActionConfig: function() {
+            var html = '<select class="addon-select" name="action_addon">';
+            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
+            
+            // Add addons from cache
+            $.each(this.addonsCache, function(key, addon) {
+                html += '<option value="' + key + '">' + addon.name + '</option>';
+            });
+            
+            html += '</select>';
+            html += '<input type="text" class="text-input" name="action_label" placeholder="' + wc_product_addons_params.i18n_new_label + '">';
+            
+            return html;
+        },
+        
+        getSetDescriptionActionConfig: function() {
+            var html = '<select class="addon-select" name="action_addon">';
+            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
+            
+            // Add addons from cache
+            $.each(this.addonsCache, function(key, addon) {
+                html += '<option value="' + key + '">' + addon.name + '</option>';
+            });
+            
+            html += '</select>';
+            html += '<textarea class="text-input" name="action_description" placeholder="' + wc_product_addons_params.i18n_new_description + '"></textarea>';
+            
+            return html;
+        },
+        
+        // Update addon options when an addon is selected
+        updateAddonOptions: function($select) {
+            var addonId = $select.val();
+            var $optionSelect = $select.siblings('.option-select');
+            
+            if (!$optionSelect.length) {
+                return;
+            }
+            
+            // Clear existing options
+            $optionSelect.empty().append('<option value="">' + wc_product_addons_params.i18n_select_option + '</option>');
+            
+            if (addonId && this.addonsCache[addonId] && this.addonsCache[addonId].options) {
+                var addon = this.addonsCache[addonId];
+                
+                $.each(addon.options, function(index, option) {
+                    $optionSelect.append('<option value="' + option.value + '">' + option.label + '</option>');
+                });
+                
+                $optionSelect.show();
+            } else {
+                $optionSelect.hide();
+            }
         },
         
         // Save rule

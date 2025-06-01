@@ -15,9 +15,19 @@ if ( ! defined( 'ABSPATH' ) ) {
     <p class="description"><?php esc_html_e( 'Create flexible rules to control add-on behavior based on user selections and conditions.', 'woocommerce-product-addons' ); ?></p>
     
     <div class="wc-addons-conditional-logic-wrap">
-        <!-- Rule Scope Selector -->
-        <div class="rule-scope-selector">
-            <h2><?php esc_html_e( 'Create New Rule', 'woocommerce-product-addons' ); ?></h2>
+        <!-- Main Tabs -->
+        <div class="main-tabs">
+            <nav class="nav-tab-wrapper">
+                <a href="#new-rule" class="nav-tab nav-tab-active" id="new-rule-tab"><?php esc_html_e( 'Create New Rule', 'woocommerce-product-addons' ); ?></a>
+                <a href="#existing-rules" class="nav-tab" id="existing-rules-tab"><?php esc_html_e( 'Manage Existing Rules', 'woocommerce-product-addons' ); ?></a>
+            </nav>
+        </div>
+        
+        <!-- New Rule Tab Content -->
+        <div id="new-rule" class="tab-content active">
+            <!-- Rule Scope Selector -->
+            <div class="rule-scope-selector">
+                <h2><?php esc_html_e( 'Rule Scope', 'woocommerce-product-addons' ); ?></h2>
             <div class="scope-options">
                 <label>
                     <input type="radio" name="rule_scope" value="global" checked>
@@ -63,18 +73,15 @@ if ( ! defined( 'ABSPATH' ) ) {
             <!-- Conditions Section -->
             <div class="conditions-section">
                 <h3><?php esc_html_e( 'IF (Conditions)', 'woocommerce-product-addons' ); ?></h3>
-                <p class="description"><?php esc_html_e( 'Define when this rule should apply', 'woocommerce-product-addons' ); ?></p>
+                <p class="description"><?php esc_html_e( 'Define when this rule should apply. You can create condition groups with AND/OR logic.', 'woocommerce-product-addons' ); ?></p>
                 
-                <div class="conditions-list" id="conditions-container">
-                    <!-- Conditions will be added here dynamically -->
+                <div class="condition-groups-container" id="condition-groups-container">
+                    <!-- Condition groups will be added here dynamically -->
                 </div>
                 
                 <div class="condition-controls">
                     <button type="button" class="button add-condition"><?php esc_html_e( '+ Add Condition', 'woocommerce-product-addons' ); ?></button>
-                    <select id="condition-logic" class="condition-logic">
-                        <option value="AND"><?php esc_html_e( 'All conditions must be met (AND)', 'woocommerce-product-addons' ); ?></option>
-                        <option value="OR"><?php esc_html_e( 'Any condition can be met (OR)', 'woocommerce-product-addons' ); ?></option>
-                    </select>
+                    <button type="button" class="button add-condition-group"><?php esc_html_e( '+ Add Condition Group', 'woocommerce-product-addons' ); ?></button>
                 </div>
             </div>
             
@@ -96,23 +103,26 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <button type="button" class="button cancel-rule"><?php esc_html_e( 'Cancel', 'woocommerce-product-addons' ); ?></button>
             </div>
         </div>
+        </div>
 
-        <!-- Existing Rules -->
-        <div class="existing-rules">
-            <h2><?php esc_html_e( 'Existing Rules', 'woocommerce-product-addons' ); ?></h2>
-            
-            <!-- Filter Tabs -->
-            <div class="rules-filter-tabs">
-                <button class="tab-button active" data-filter="all"><?php esc_html_e( 'All Rules', 'woocommerce-product-addons' ); ?></button>
-                <button class="tab-button" data-filter="global"><?php esc_html_e( 'Global', 'woocommerce-product-addons' ); ?></button>
-                <button class="tab-button" data-filter="category"><?php esc_html_e( 'Category', 'woocommerce-product-addons' ); ?></button>
-                <button class="tab-button" data-filter="product"><?php esc_html_e( 'Product', 'woocommerce-product-addons' ); ?></button>
-            </div>
-            
-            <div class="rules-list" id="rules-list">
-                <!-- Rules will be loaded here via AJAX -->
-                <div class="no-rules-message">
-                    <p><?php esc_html_e( 'No rules found. Create your first rule above!', 'woocommerce-product-addons' ); ?></p>
+        <!-- Existing Rules Tab Content -->
+        <div id="existing-rules" class="tab-content">
+            <div class="existing-rules">
+                <h2><?php esc_html_e( 'Manage Existing Rules', 'woocommerce-product-addons' ); ?></h2>
+                
+                <!-- Filter Tabs -->
+                <div class="rules-filter-tabs">
+                    <button class="tab-button active" data-filter="all"><?php esc_html_e( 'All Rules', 'woocommerce-product-addons' ); ?></button>
+                    <button class="tab-button" data-filter="global"><?php esc_html_e( 'Global', 'woocommerce-product-addons' ); ?></button>
+                    <button class="tab-button" data-filter="category"><?php esc_html_e( 'Category', 'woocommerce-product-addons' ); ?></button>
+                    <button class="tab-button" data-filter="product"><?php esc_html_e( 'Product', 'woocommerce-product-addons' ); ?></button>
+                </div>
+                
+                <div class="rules-list" id="rules-list">
+                    <!-- Rules will be loaded here via AJAX -->
+                    <div class="no-rules-message">
+                        <p><?php esc_html_e( 'No rules found. Create your first rule in the "Create New Rule" tab!', 'woocommerce-product-addons' ); ?></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -154,6 +164,32 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
             
             <button type="button" class="remove-condition" title="<?php esc_attr_e( 'Remove condition', 'woocommerce-product-addons' ); ?>">×</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/template" id="condition-group-template">
+    <div class="condition-group" data-group-id="">
+        <div class="condition-group-header">
+            <span class="group-logic-indicator">IF</span>
+            <select class="group-logic">
+                <option value="AND"><?php esc_html_e( 'ALL conditions are met (AND)', 'woocommerce-product-addons' ); ?></option>
+                <option value="OR"><?php esc_html_e( 'ANY condition is met (OR)', 'woocommerce-product-addons' ); ?></option>
+            </select>
+            <button type="button" class="remove-group" title="<?php esc_attr_e( 'Remove group', 'woocommerce-product-addons' ); ?>">×</button>
+        </div>
+        <div class="conditions-in-group">
+            <!-- Individual conditions will be added here -->
+        </div>
+        <div class="group-controls">
+            <button type="button" class="button add-condition-to-group"><?php esc_html_e( '+ Add Condition to Group', 'woocommerce-product-addons' ); ?></button>
+        </div>
+        <div class="group-relationship">
+            <select class="group-relationship-selector">
+                <option value="AND"><?php esc_html_e( 'AND', 'woocommerce-product-addons' ); ?></option>
+                <option value="OR"><?php esc_html_e( 'OR', 'woocommerce-product-addons' ); ?></option>
+            </select>
+            <span class="relationship-label"><?php esc_html_e( 'with next group', 'woocommerce-product-addons' ); ?></span>
         </div>
     </div>
 </script>

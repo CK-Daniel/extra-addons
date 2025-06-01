@@ -121,6 +121,9 @@ function woocommerce_product_addons_init() {
 				$GLOBALS['Product_Addon_Display'] = new WC_Product_Addons_Display();
 				$GLOBALS['Product_Addon_Cart']    = new WC_Product_Addons_Cart();
 				new WC_Product_Addons_Cart_Ajax();
+				
+				// Initialize conditional logic system
+				WC_Product_Addons_Conditional_Logic::get_instance();
 			}
 
 			/**

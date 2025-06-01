@@ -1328,19 +1328,68 @@ class WC_Product_Addons_Admin {
 			wp_die( -1 );
 		}
 		
+		$product_id = isset( $_GET['product_id'] ) ? absint( $_GET['product_id'] ) : 0;
 		$addons = array();
 		
 		// Get global addon groups
 		$global_groups = WC_Product_Addons_Groups::get_all_global_groups();
 		
 		foreach ( $global_groups as $group ) {
-			if ( ! empty( $group['addons'] ) ) {
-				foreach ( $group['addons'] as $addon ) {
-					$addon_id = sanitize_title( $addon['name'] ) . '_' . $group['id'];
+			// Fix: Use 'fields' instead of 'addons'
+			if ( ! empty( $group['fields'] ) ) {
+				foreach ( $group['fields'] as $addon ) {
+					$addon_id = sanitize_title( $addon['name'] ) . '_global_' . $group['id'];
+					$options = array();
+					
+					// Process addon options if they exist
+					if ( ! empty( $addon['options'] ) && is_array( $addon['options'] ) ) {
+						foreach ( $addon['options'] as $index => $option ) {
+							$options[] = array(
+								'value' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($index + 1),
+								'label' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($index + 1),
+								'price' => isset( $option['price'] ) ? $option['price'] : 0
+							);
+						}
+					}
+					
 					$addons[$addon_id] = array(
-						'name' => $addon['name'] . ' (' . $group['name'] . ')',
+						'name' => $addon['name'] . ' (Global: ' . $group['name'] . ')',
 						'type' => $addon['type'],
-						'options' => ! empty( $addon['options'] ) ? $addon['options'] : array()
+						'field_name' => isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $addon['name'] ),
+						'options' => $options,
+						'source' => 'global',
+						'group_id' => $group['id']
+					);
+				}
+			}
+		}
+		
+		// Get product-specific addons if product_id is provided
+		if ( $product_id > 0 ) {
+			$product_addons = get_post_meta( $product_id, '_product_addons', true );
+			if ( is_array( $product_addons ) ) {
+				foreach ( $product_addons as $index => $addon ) {
+					$addon_id = sanitize_title( $addon['name'] ) . '_product_' . $product_id . '_' . $index;
+					$options = array();
+					
+					// Process addon options if they exist
+					if ( ! empty( $addon['options'] ) && is_array( $addon['options'] ) ) {
+						foreach ( $addon['options'] as $opt_index => $option ) {
+							$options[] = array(
+								'value' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
+								'label' => isset( $option['label'] ) ? $option['label'] : 'Option ' . ($opt_index + 1),
+								'price' => isset( $option['price'] ) ? $option['price'] : 0
+							);
+						}
+					}
+					
+					$addons[$addon_id] = array(
+						'name' => $addon['name'] . ' (Product-specific)',
+						'type' => $addon['type'],
+						'field_name' => isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $addon['name'] ),
+						'options' => $options,
+						'source' => 'product',
+						'product_id' => $product_id
 					);
 				}
 			}

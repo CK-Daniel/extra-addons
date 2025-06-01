@@ -1,9 +1,59 @@
-/* Conditional Logic Admin CSS - Simplified and Modern */
+/* Conditional Logic Admin CSS - Modern and Enhanced */
 
 /* Main Container */
 .wc-addons-conditional-logic-wrap {
     margin-top: 20px;
     max-width: 1200px;
+}
+
+/* Main Tabs */
+.main-tabs {
+    margin-bottom: 30px;
+}
+
+.main-tabs .nav-tab-wrapper {
+    border-bottom: 1px solid #ccd0d4;
+    margin-bottom: 0;
+}
+
+.main-tabs .nav-tab {
+    background: #f1f1f1;
+    border: 1px solid #ccd0d4;
+    border-bottom: none;
+    color: #555;
+    font-weight: 600;
+    padding: 12px 20px;
+    text-decoration: none;
+    border-radius: 4px 4px 0 0;
+    margin-right: 5px;
+    transition: all 0.3s ease;
+}
+
+.main-tabs .nav-tab:hover {
+    background: #e8e8e8;
+    color: #23282d;
+}
+
+.main-tabs .nav-tab.nav-tab-active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    color: #2271b1;
+    position: relative;
+    z-index: 1;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-top: none;
+    padding: 20px;
+    border-radius: 0 0 4px 4px;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 /* Rule Scope Selector */
@@ -506,6 +556,147 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Condition Groups */
+.condition-groups-container {
+    margin-bottom: 20px;
+}
+
+.condition-group {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.condition-group:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.condition-group-header {
+    background: #e9ecef;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.group-logic-indicator {
+    background: #6c757d;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.group-logic {
+    flex: 1;
+    max-width: 300px;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+}
+
+.remove-group {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.remove-group:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.conditions-in-group {
+    padding: 20px;
+}
+
+.conditions-in-group .condition-item {
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.group-controls {
+    padding: 0 20px 15px;
+}
+
+.add-condition-to-group {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.add-condition-to-group:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.group-relationship {
+    background: #f1f3f4;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid #dee2e6;
+}
+
+.group-relationship-selector {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    min-width: 80px;
+}
+
+.relationship-label {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.condition-group:last-child .group-relationship {
+    display: none;
+}
+
+/* Enhanced Button Styles */
+.add-condition-group {
+    background: #007cba;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.add-condition-group:hover {
+    background: #005a87;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,124,186,0.3);
 }
 
 /* Responsive */
