@@ -109,7 +109,17 @@ function woocommerce_product_addons_init() {
 				// Conditional Logic System
 				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/class-wc-product-addons-condition-evaluator.php' );
 				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/abstract-wc-product-addons-condition.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-field.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-product.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-cart.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-user.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-date.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/conditions/class-wc-product-addons-condition-rule.php' );
 				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/actions/abstract-wc-product-addons-action.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/actions/class-wc-product-addons-action-visibility.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/actions/class-wc-product-addons-action-price.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/actions/class-wc-product-addons-action-requirement.php' );
+				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/actions/class-wc-product-addons-action-modifier.php' );
 				require_once( dirname( __FILE__ ) . '/includes/conditional-logic/class-wc-product-addons-conditional-logic.php' );
 
 				// Admin

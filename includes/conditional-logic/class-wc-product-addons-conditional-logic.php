@@ -106,6 +106,7 @@ class WC_Product_Addons_Conditional_Logic {
 		
 		// Frontend hooks
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
+		add_action( 'woocommerce_product_addons_end', array( $this, 'output_conditional_data' ), 10 );
 		
 		// Allow third-party condition registration
 		do_action( 'woocommerce_product_addons_register_conditions', $this );
@@ -237,6 +238,23 @@ class WC_Product_Addons_Conditional_Logic {
 	private function rule_applies_to_addon( $addon, $conditions, $actions ) {
 		// Check if any action targets this addon
 		foreach ( $actions as $action ) {
+			// Handle new action structure with config
+			if ( isset( $action['config'] ) ) {
+				$target_level = isset( $action['config']['action_target_level'] ) ? $action['config']['action_target_level'] : '';
+				$target_addon = isset( $action['config']['action_addon'] ) ? $action['config']['action_addon'] : '';
+				
+				// If target level is 'addon' (entire addon) and addon matches
+				if ( $target_level === 'addon' && $target_addon === $addon['name'] ) {
+					return true;
+				}
+				
+				// If target level is 'option' (specific option) and addon matches
+				if ( $target_level === 'option' && $target_addon === $addon['name'] ) {
+					return true;
+				}
+			}
+			
+			// Handle legacy action structure
 			if ( isset( $action['target'] ) ) {
 				if ( $action['target'] === 'self' || 
 					 $action['target'] === 'all' || 
@@ -725,6 +743,70 @@ class WC_Product_Addons_Conditional_Logic {
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'wc-product-addons-conditional-logic' ),
 			) );
+		}
+	}
+
+	/**
+	 * Output conditional logic data for frontend
+	 */
+	public function output_conditional_data() {
+		if ( ! is_product() ) {
+			return;
+		}
+
+		global $product;
+		if ( ! $product ) {
+			return;
+		}
+
+		$product_id = $product->get_id();
+		$conditional_data = $this->get_product_conditional_data( $product_id );
+
+		if ( ! empty( $conditional_data ) ) {
+			echo '<script type="text/javascript">';
+			echo 'window.wc_product_addons_conditional_data = ' . wp_json_encode( $conditional_data ) . ';';
+			echo '</script>';
+		}
+	}
+
+		/**
+		 * Get conditional logic data for a product
+		 *
+		 * @param int $product_id Product ID
+		 * @return array Conditional data
+		 */
+		private function get_product_conditional_data( $product_id ) {
+			global $wpdb;
+
+			$rules = $wpdb->get_results( $wpdb->prepare(
+				"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules 
+				WHERE (rule_type = 'product' AND scope_id = %d) 
+				OR rule_type = 'global'
+				AND enabled = 1 
+				ORDER BY priority DESC",
+				$product_id
+			) );
+
+			$conditional_data = array(
+				'rules' => array(),
+				'product_id' => $product_id
+			);
+
+			foreach ( $rules as $rule ) {
+				$conditions = json_decode( $rule->conditions, true );
+				$actions = json_decode( $rule->actions, true );
+
+				$conditional_data['rules'][] = array(
+					'rule_id' => $rule->rule_id,
+					'name' => $rule->rule_name,
+					'type' => $rule->rule_type,
+					'conditions' => $conditions,
+					'actions' => $actions,
+					'priority' => $rule->priority
+				);
+			}
+
+			return $conditional_data;
 		}
 	}
 }

@@ -138,6 +138,9 @@ class WC_Product_Addons_Helper {
 				$addons[ $addon_key ]['field_name'] = sanitize_title( $prefix . $addon_name . '-' . $addon_field_counter );
 				$addon_field_counter++;
 			}
+			
+			// Apply conditional logic to individual addon
+			$addons[ $addon_key ] = apply_filters( 'woocommerce_product_addons_get_addon_array', $addons[ $addon_key ], $post_id );
 		}
 
 		return apply_filters( 'get_product_addons', $addons );

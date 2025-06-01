@@ -1112,7 +1112,12 @@
                         $('html, body').animate({
                             scrollTop: $('.rule-builder').offset().top - 50
                         }, 500);
+                    } else {
+                        self.showNotice('Failed to load rule: ' + (response.data.message || 'Unknown error'), 'error');
                     }
+                },
+                error: function(xhr, status, error) {
+                    self.showNotice('Error loading rule: ' + error, 'error');
                 }
             });
         },
