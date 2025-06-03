@@ -109,6 +109,9 @@ class WC_Product_Addons_Conditional_Logic {
 		add_action( 'wp_ajax_wc_pao_get_addons', array( $this, 'ajax_get_addons' ) );
 		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
 		
+		// Debug: Add a simple test handler
+		add_action( 'wp_ajax_wc_pao_test', array( $this, 'ajax_test' ) );
+		
 		// Admin hooks
 		if ( is_admin() ) {
 			add_action( 'woocommerce_product_addons_panel_after_options', array( $this, 'render_conditional_logic_panel' ), 10, 3 );
@@ -1307,6 +1310,13 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 		
 		return $options;
+	}
+	
+	/**
+	 * Debug AJAX handler
+	 */
+	public function ajax_test() {
+		wp_send_json_success( array( 'message' => 'AJAX handlers are working!' ) );
 	}
 }
 

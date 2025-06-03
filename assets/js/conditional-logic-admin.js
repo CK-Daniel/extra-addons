@@ -290,6 +290,7 @@
          * Remove condition
          */
         removeCondition: function($button) {
+            var self = this;
             var $condition = $button.closest('.condition-item');
             var $group = $condition.closest('.condition-group');
             
@@ -312,6 +313,7 @@
          * Remove condition group
          */
         removeConditionGroup: function($button) {
+            var self = this;
             var $group = $button.closest('.condition-group');
             
             $group.fadeOut(200, function() {
@@ -325,6 +327,7 @@
          * Remove action
          */
         removeAction: function($button) {
+            var self = this;
             var $action = $button.closest('.action-item');
             
             $action.fadeOut(200, function() {
@@ -1198,6 +1201,22 @@
             console.error('WC Product Addons Conditional Logic: Localization data not found. Script may not be properly enqueued.');
             return;
         }
+        
+        // Debug: Test if AJAX handlers are working
+        console.log('Testing AJAX handlers...');
+        $.ajax({
+            url: wc_product_addons_params.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wc_pao_test'
+            },
+            success: function(response) {
+                console.log('AJAX Test Success:', response);
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Test Failed:', xhr.status, xhr.statusText, xhr.responseText);
+            }
+        });
         
         WC_PAO_Conditional_Logic_Admin.init();
     });
