@@ -364,6 +364,7 @@
          * Handle condition type change
          */
         handleConditionTypeChange: function($select) {
+            var self = this;
             var type = $select.val();
             var $config = $select.siblings('.condition-config');
             
@@ -418,6 +419,7 @@
          * Handle action type change
          */
         handleActionTypeChange: function($select) {
+            var self = this;
             var type = $select.val();
             var $config = $select.siblings('.action-config');
             
