@@ -714,8 +714,6 @@
             
             $('#rules-list').html('<div class="loading-spinner">Loading rules...</div>');
             
-            console.log('Loading rules with nonce:', wc_product_addons_params.get_rules_nonce);
-            console.log('AJAX URL:', wc_product_addons_params.ajax_url);
             
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
@@ -796,6 +794,10 @@
          * Helper functions
          */
         escapeHtml: function(text) {
+            if (!text) {
+                return '';
+            }
+            
             var map = {
                 '&': '&amp;',
                 '<': '&lt;',
@@ -804,7 +806,7 @@
                 "'": '&#039;'
             };
             
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+            return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
         },
 
         getScopeLabel: function(scope) {
@@ -1202,21 +1204,6 @@
             return;
         }
         
-        // Debug: Test if AJAX handlers are working
-        console.log('Testing AJAX handlers...');
-        $.ajax({
-            url: wc_product_addons_params.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'wc_pao_test'
-            },
-            success: function(response) {
-                console.log('AJAX Test Success:', response);
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX Test Failed:', xhr.status, xhr.statusText, xhr.responseText);
-            }
-        });
         
         WC_PAO_Conditional_Logic_Admin.init();
     });

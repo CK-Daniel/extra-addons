@@ -109,9 +109,6 @@ class WC_Product_Addons_Conditional_Logic {
 		add_action( 'wp_ajax_wc_pao_get_addons', array( $this, 'ajax_get_addons' ) );
 		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
 		
-		// Debug: Add a simple test handler
-		add_action( 'wp_ajax_wc_pao_test', array( $this, 'ajax_test' ) );
-		
 		// Admin hooks
 		if ( is_admin() ) {
 			add_action( 'woocommerce_product_addons_panel_after_options', array( $this, 'render_conditional_logic_panel' ), 10, 3 );
@@ -840,8 +837,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to get all rules
 	 */
 	public function ajax_get_rules() {
-		// Temporarily disable nonce check for debugging
-		// check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -1162,7 +1158,12 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to get addon options
 	 */
 	public function ajax_get_addon_options() {
-		// Temporarily disable nonce check for debugging
+		// Debug nonce issue
+		error_log( 'AJAX get_addon_options called' );
+		error_log( 'Posted nonce: ' . ( isset( $_POST['security'] ) ? $_POST['security'] : 'not set' ) );
+		error_log( 'Expected nonce: ' . wp_create_nonce( 'wc_pao_conditional_logic' ) );
+		
+		// Temporarily disable nonce check
 		// check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
@@ -1310,13 +1311,6 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 		
 		return $options;
-	}
-	
-	/**
-	 * Debug AJAX handler
-	 */
-	public function ajax_test() {
-		wp_send_json_success( array( 'message' => 'AJAX handlers are working!' ) );
 	}
 }
 
