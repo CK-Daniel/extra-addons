@@ -769,45 +769,44 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 	}
 
-		/**
-		 * Get conditional logic data for a product
-		 *
-		 * @param int $product_id Product ID
-		 * @return array Conditional data
-		 */
-		private function get_product_conditional_data( $product_id ) {
-			global $wpdb;
+	/**
+	 * Get conditional logic data for a product
+	 *
+	 * @param int $product_id Product ID
+	 * @return array Conditional data
+	 */
+	private function get_product_conditional_data( $product_id ) {
+		global $wpdb;
 
-			$rules = $wpdb->get_results( $wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules 
-				WHERE (rule_type = 'product' AND scope_id = %d) 
-				OR rule_type = 'global'
-				AND enabled = 1 
-				ORDER BY priority DESC",
-				$product_id
-			) );
+		$rules = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules 
+			WHERE (rule_type = 'product' AND scope_id = %d) 
+			OR rule_type = 'global'
+			AND enabled = 1 
+			ORDER BY priority DESC",
+			$product_id
+		) );
 
-			$conditional_data = array(
-				'rules' => array(),
-				'product_id' => $product_id
+		$conditional_data = array(
+			'rules' => array(),
+			'product_id' => $product_id
+		);
+
+		foreach ( $rules as $rule ) {
+			$conditions = json_decode( $rule->conditions, true );
+			$actions = json_decode( $rule->actions, true );
+
+			$conditional_data['rules'][] = array(
+				'rule_id' => $rule->rule_id,
+				'name' => $rule->rule_name,
+				'type' => $rule->rule_type,
+				'conditions' => $conditions,
+				'actions' => $actions,
+				'priority' => $rule->priority
 			);
-
-			foreach ( $rules as $rule ) {
-				$conditions = json_decode( $rule->conditions, true );
-				$actions = json_decode( $rule->actions, true );
-
-				$conditional_data['rules'][] = array(
-					'rule_id' => $rule->rule_id,
-					'name' => $rule->rule_name,
-					'type' => $rule->rule_type,
-					'conditions' => $conditions,
-					'actions' => $actions,
-					'priority' => $rule->priority
-				);
-			}
-
-			return $conditional_data;
 		}
+
+		return $conditional_data;
 	}
 }
 
