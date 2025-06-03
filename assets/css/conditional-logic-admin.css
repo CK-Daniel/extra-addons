@@ -397,120 +397,318 @@
     color: #646970;
 }
 
-/* Rule Item */
+/* Rule Item - Enhanced */
 .rule-item {
-    background: #f6f7f7;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin-bottom: 15px;
+    background: #ffffff;
+    border: 1px solid #e0e5e8;
+    border-radius: 8px;
+    margin-bottom: 16px;
     overflow: hidden;
-    transition: box-shadow 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
 
 .rule-item:hover {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
 }
 
+.rule-item.is-editing {
+    box-shadow: 0 0 0 2px #2271b1;
+}
+
+.rule-item.is-deleting {
+    opacity: 0;
+    transform: scale(0.95);
+    margin-bottom: 0;
+    max-height: 0;
+}
+
+/* Rule Header - Improved Layout */
 .rule-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 16px;
     align-items: center;
-    justify-content: space-between;
-    padding: 15px 20px;
-    background: #fff;
-    border-bottom: 1px solid #ddd;
+    padding: 16px 20px;
+    background: #fafbfc;
+    border-bottom: 1px solid #e0e5e8;
+}
+
+.rule-header-main {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .rule-title {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #23282d;
+    color: #1e1e1e;
+    line-height: 1.3;
 }
 
 .rule-meta {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
+}
+
+.rule-priority {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: #f0f0f1;
+    color: #50575e;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
 }
 
 .rule-scope-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .rule-scope-badge.global {
-    background: #e6f3ff;
+    background: #e7f2fd;
     color: #0073aa;
+    border: 1px solid #bee5ff;
 }
 
 .rule-scope-badge.category {
-    background: #fef5e7;
-    color: #f39c12;
+    background: #fff9e6;
+    color: #d97706;
+    border: 1px solid #fde68a;
 }
 
 .rule-scope-badge.product {
-    background: #e8f5e9;
-    color: #4caf50;
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
 }
 
 .rule-status {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 12px;
+    text-transform: uppercase;
 }
 
 .rule-status.active {
-    background: #d4edda;
-    color: #155724;
+    background: #dcfce7;
+    color: #14532d;
+    border: 1px solid #86efac;
+}
+
+.rule-status.active::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
 }
 
 .rule-status.inactive {
-    background: #f8d7da;
-    color: #721c24;
+    background: #fee2e2;
+    color: #7c2d12;
+    border: 1px solid #fca5a5;
 }
 
+.rule-status.inactive::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: #dc2626;
+    border-radius: 50%;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+/* Rule Actions - Enhanced */
 .rule-actions {
     display: flex;
-    gap: 5px;
+    gap: 4px;
 }
 
 .rule-actions button {
-    background: none;
-    border: none;
-    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #ffffff;
+    border: 1px solid #dcdde1;
+    border-radius: 6px;
     cursor: pointer;
-    color: #646970;
-    transition: color 0.2s ease;
+    color: #50575e;
+    transition: all 0.2s ease;
+    position: relative;
 }
 
 .rule-actions button:hover {
+    background: #f0f8ff;
+    border-color: #2271b1;
+    color: #2271b1;
+    transform: translateY(-1px);
+}
+
+.rule-actions button:active {
+    transform: translateY(0);
+}
+
+.rule-actions .edit-rule:hover {
+    background: #f0f8ff;
+    border-color: #2271b1;
     color: #2271b1;
 }
 
-.rule-actions .delete-rule:hover {
-    color: #dc3232;
+.rule-actions .duplicate-rule:hover {
+    background: #f0f9ff;
+    border-color: #0284c7;
+    color: #0284c7;
 }
 
+.rule-actions .toggle-rule:hover {
+    background: #f9fafb;
+    border-color: #6b7280;
+    color: #6b7280;
+}
+
+.rule-actions .delete-rule:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+.rule-actions button .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+/* Tooltips for action buttons */
+.rule-actions button::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: #1e1e1e;
+    color: #ffffff;
+    font-size: 11px;
+    white-space: nowrap;
+    border-radius: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.rule-actions button::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 4px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #1e1e1e;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.rule-actions button:hover::after,
+.rule-actions button:hover::before {
+    opacity: 1;
+}
+
+/* Rule Summary - Enhanced */
 .rule-summary {
-    padding: 15px 20px;
+    padding: 16px 20px;
+    background: #fafbfc;
+    border-top: 1px solid #e0e5e8;
 }
 
 .conditions-summary,
 .actions-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     margin-bottom: 8px;
-    color: #646970;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.conditions-summary:last-child,
+.actions-summary:last-child {
+    margin-bottom: 0;
 }
 
 .conditions-summary strong,
 .actions-summary strong {
-    color: #23282d;
-    margin-right: 8px;
+    color: #1e1e1e;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.conditions-summary span,
+.actions-summary span {
+    color: #50575e;
+}
+
+/* Condition/Action Pills */
+.condition-pill,
+.action-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: #e0e5e8;
+    color: #1e1e1e;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+.condition-pill {
+    background: #e7f2fd;
+    color: #0073aa;
+}
+
+.action-pill {
+    background: #ecfdf5;
+    color: #059669;
 }
 
 /* Select2 Overrides */

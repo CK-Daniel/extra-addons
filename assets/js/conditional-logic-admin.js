@@ -1,1089 +1,655 @@
 /**
- * WooCommerce Product Add-ons Conditional Logic Admin
- * Simplified and improved conditional logic interface
+ * WooCommerce Product Add-ons - Conditional Logic Admin JavaScript
+ * 
+ * Handles all admin functionality for conditional logic rules
  */
-
 (function($) {
     'use strict';
 
-    var WC_Product_Addons_Conditional_Logic_Admin = {
+    var WC_PAO_Conditional_Logic_Admin = {
         
-        // Current rule being edited
-        currentRule: null,
-        editingRuleId: null,
-        
-        // Cache for addons data
-        addonsCache: {},
-        addonsData: {},
-        currentContext: 'all',
-        currentProductId: 0,
-        
-        // Condition group counter
-        conditionGroupCounter: 0,
-        
-        // Initialize
+        /**
+         * Initialize
+         */
         init: function() {
             this.bindEvents();
-            this.initializeSelect2();
-            this.initializeTabs();
+            this.initSortable();
             this.loadExistingRules();
-            this.loadAddonsData();
-            this.initializeRuleBuilder();
         },
-        
-        // Bind all events
+
+        /**
+         * Bind events
+         */
         bindEvents: function() {
             var self = this;
-            
-            // Rule scope selector
-            $('input[name="rule_scope"]').on('change', function() {
-                self.handleScopeChange($(this).val());
-            });
-            
-            // Add condition/action buttons
-            $(document).on('click', '.add-condition', function(e) {
-                e.preventDefault();
-                self.addConditionGroup();
-            });
-            
-            $(document).on('click', '.add-condition-group', function(e) {
-                e.preventDefault();
-                self.addConditionGroup();
-            });
-            
-            $(document).on('click', '.add-condition-to-group', function(e) {
-                e.preventDefault();
-                var groupId = $(this).closest('.condition-group').data('group-id');
-                self.addConditionToGroup(groupId);
-            });
-            
-            $(document).on('click', '.remove-group', function(e) {
-                e.preventDefault();
-                var groupId = $(this).closest('.condition-group').data('group-id');
-                self.removeConditionGroup(groupId);
-            });
-            
-            $(document).on('click', '.add-action', function(e) {
-                e.preventDefault();
-                self.addAction();
-            });
-            
-            // Remove condition/action buttons
-            $(document).on('click', '.remove-condition', function(e) {
-                e.preventDefault();
-                $(this).closest('.condition-item').fadeOut(200, function() {
-                    $(this).remove();
-                });
-            });
-            
-            $(document).on('click', '.remove-action', function(e) {
-                e.preventDefault();
-                $(this).closest('.action-item').fadeOut(200, function() {
-                    $(this).remove();
-                });
-            });
-            
-            // Condition type change
-            $(document).on('change', '.condition-type', function() {
-                self.updateConditionConfig($(this));
-            });
-            
-            // Action type change
-            $(document).on('change', '.action-type', function() {
-                self.updateActionConfig($(this));
-            });
-            
-            // Handle addon selection to populate options
-            $(document).on('change', '.addon-select', function() {
-                self.updateAddonOptions($(this));
-            });
-            
-            // Addon context change
-            $('input[name="addon_context"]').on('change', function() {
-                self.handleAddonContextChange($(this).val());
-            });
-            
-            // Product context selection
-            $(document).on('change', '.wc-product-search-context', function() {
-                self.currentProductId = $(this).val();
-                self.loadAddonsData();
-            });
-            
-            // Target level change (addon vs option)
-            $(document).on('change', '.target-level', function() {
-                self.updateTargetLevelDisplay($(this));
-            });
-            
-            // Save rule button
-            $('.save-rule').on('click', function(e) {
-                e.preventDefault();
-                self.saveRule();
-            });
-            
-            // Cancel rule button
-            $('.cancel-rule').on('click', function(e) {
-                e.preventDefault();
-                self.resetRuleBuilder();
-            });
-            
-            // Filter tabs
-            $('.tab-button').on('click', function() {
-                var filter = $(this).data('filter');
-                $('.tab-button').removeClass('active');
-                $(this).addClass('active');
-                self.filterRules(filter);
-            });
-            
-            // Rule actions
-            $(document).on('click', '.edit-rule', function(e) {
-                e.preventDefault();
-                var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.editRule(ruleId);
-            });
-            
-            $(document).on('click', '.duplicate-rule', function(e) {
-                e.preventDefault();
-                var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.duplicateRule(ruleId);
-            });
-            
-            $(document).on('click', '.toggle-rule', function(e) {
-                e.preventDefault();
-                var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.toggleRule(ruleId);
-            });
-            
-            $(document).on('click', '.delete-rule', function(e) {
-                e.preventDefault();
-                if (confirm(wc_product_addons_params.i18n_confirm_delete_rule)) {
-                    var ruleId = $(this).closest('.rule-item').data('rule-id');
-                    self.deleteRule(ruleId);
-                }
-            });
-        },
-        
-        // Initialize Select2
-        initializeSelect2: function() {
-            // Category search
-            $('.wc-category-search').select2({
-                ajax: {
-                    url: wc_product_addons_params.ajax_url,
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            action: 'wc_product_addons_search_categories',
-                            security: wc_product_addons_params.search_categories_nonce,
-                            term: params.term
-                        };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: data
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 2
-            });
-            
-            // Product search
-            $('.wc-product-search').select2({
-                ajax: {
-                    url: wc_product_addons_params.ajax_url,
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            action: 'woocommerce_json_search_products',
-                            security: wc_product_addons_params.search_products_nonce,
-                            term: params.term,
-                            exclude_type: 'variable'
-                        };
-                    },
-                    processResults: function(data) {
-                        var results = [];
-                        $.each(data, function(id, text) {
-                            results.push({
-                                id: id,
-                                text: text
-                            });
-                        });
-                        return {
-                            results: results
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 3
-            });
-            
-            // Product search for context
-            $('.wc-product-search-context').select2({
-                ajax: {
-                    url: wc_product_addons_params.ajax_url,
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            action: 'woocommerce_json_search_products',
-                            security: wc_product_addons_params.search_products_nonce,
-                            term: params.term,
-                            exclude_type: 'variable'
-                        };
-                    },
-                    processResults: function(data) {
-                        var results = [];
-                        $.each(data, function(id, text) {
-                            results.push({
-                                id: id,
-                                text: text
-                            });
-                        });
-                        return {
-                            results: results
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 3
-            });
-        },
-        
-        // Initialize tabs
-        initializeTabs: function() {
-            var self = this;
-            
+
             // Tab switching
             $('.nav-tab').on('click', function(e) {
                 e.preventDefault();
-                var target = $(this).attr('href');
-                
-                // Update tab appearance
-                $('.nav-tab').removeClass('nav-tab-active');
-                $(this).addClass('nav-tab-active');
-                
-                // Show/hide tab content
-                $('.tab-content').removeClass('active');
-                $(target).addClass('active');
-                
-                // Load rules when switching to existing rules tab
-                if (target === '#existing-rules') {
-                    self.loadExistingRules();
+                self.switchTab($(this).attr('href').substring(1));
+            });
+
+            // Rule scope change
+            $('input[name="rule_scope"]').on('change', function() {
+                self.handleScopeChange($(this).val());
+            });
+
+            // Add-on context change
+            $('input[name="addon_context"]').on('change', function() {
+                self.handleContextChange($(this).val());
+            });
+
+            // Add condition/action buttons
+            $('.add-condition').on('click', function() {
+                self.addCondition();
+            });
+
+            $('.add-condition-group').on('click', function() {
+                self.addConditionGroup();
+            });
+
+            $('.add-action').on('click', function() {
+                self.addAction();
+            });
+
+            // Save rule
+            $('.save-rule').on('click', function() {
+                self.saveRule();
+            });
+
+            // Cancel rule
+            $('.cancel-rule').on('click', function() {
+                self.cancelRule();
+            });
+
+            // Filter tabs
+            $('.tab-button').on('click', function() {
+                $('.tab-button').removeClass('active');
+                $(this).addClass('active');
+                self.filterRules($(this).data('filter'));
+            });
+
+            // Delegated events for dynamic content
+            $(document).on('change', '.condition-type', function() {
+                self.handleConditionTypeChange($(this));
+            });
+
+            $(document).on('change', '.action-type', function() {
+                self.handleActionTypeChange($(this));
+            });
+
+            $(document).on('click', '.remove-condition', function() {
+                self.removeCondition($(this));
+            });
+
+            $(document).on('click', '.remove-action', function() {
+                self.removeAction($(this));
+            });
+
+            $(document).on('click', '.remove-group', function() {
+                self.removeConditionGroup($(this));
+            });
+
+            $(document).on('click', '.add-condition-to-group', function() {
+                self.addConditionToGroup($(this).closest('.condition-group'));
+            });
+
+            // Rule item actions
+            $(document).on('click', '.edit-rule', function(e) {
+                e.preventDefault();
+                self.editRule($(this).closest('.rule-item').data('rule-id'));
+            });
+
+            $(document).on('click', '.duplicate-rule', function(e) {
+                e.preventDefault();
+                self.duplicateRule($(this).closest('.rule-item').data('rule-id'));
+            });
+
+            $(document).on('click', '.toggle-rule', function(e) {
+                e.preventDefault();
+                self.toggleRule($(this).closest('.rule-item'));
+            });
+
+            $(document).on('click', '.delete-rule', function(e) {
+                e.preventDefault();
+                self.deleteRule($(this).closest('.rule-item'));
+            });
+
+            // Initialize Select2 for product/category search
+            this.initializeSelect2();
+        },
+
+        /**
+         * Initialize Select2
+         */
+        initializeSelect2: function() {
+            if ($.fn.selectWoo) {
+                $('.wc-product-search').selectWoo({
+                    ajax: {
+                        url: ajaxurl,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return {
+                                action: 'woocommerce_json_search_products',
+                                term: params.term,
+                                security: wc_product_addons_conditional_logic.nonce
+                            };
+                        },
+                        processResults: function(data) {
+                            var results = [];
+                            if (data) {
+                                $.each(data, function(id, text) {
+                                    results.push({
+                                        id: id,
+                                        text: text
+                                    });
+                                });
+                            }
+                            return { results: results };
+                        }
+                    },
+                    minimumInputLength: 3
+                });
+
+                $('.wc-category-search').selectWoo({
+                    ajax: {
+                        url: ajaxurl,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return {
+                                action: 'woocommerce_json_search_categories',
+                                term: params.term,
+                                security: wc_product_addons_conditional_logic.nonce
+                            };
+                        },
+                        processResults: function(data) {
+                            var results = [];
+                            if (data) {
+                                $.each(data, function(id, text) {
+                                    results.push({
+                                        id: id,
+                                        text: text
+                                    });
+                                });
+                            }
+                            return { results: results };
+                        }
+                    },
+                    minimumInputLength: 3
+                });
+            }
+        },
+
+        /**
+         * Initialize sortable for rules
+         */
+        initSortable: function() {
+            var self = this;
+            
+            $('#rules-list').sortable({
+                handle: '.drag-handle',
+                placeholder: 'ui-sortable-placeholder',
+                items: '.rule-item',
+                axis: 'y',
+                opacity: 0.8,
+                update: function(event, ui) {
+                    self.updateRulePriorities();
                 }
             });
         },
-        
-        // Add condition group
-        addConditionGroup: function() {
-            var groupId = 'group-' + (++this.conditionGroupCounter);
-            var template = $('#condition-group-template').html();
-            var $group = $(template);
+
+        /**
+         * Switch tab
+         */
+        switchTab: function(tabId) {
+            $('.nav-tab').removeClass('nav-tab-active');
+            $('#' + tabId + '-tab').addClass('nav-tab-active');
             
-            $group.attr('data-group-id', groupId);
-            $('#condition-groups-container').append($group);
-            
-            // Add first condition to the group
-            this.addConditionToGroup(groupId);
-            
-            return groupId;
+            $('.tab-content').removeClass('active');
+            $('#' + tabId).addClass('active');
         },
-        
-        // Add condition to specific group
-        addConditionToGroup: function(groupId) {
-            var template = $('#condition-template').html();
-            var $condition = $(template);
-            var conditionId = 'condition-' + Date.now();
-            
-            $condition.attr('data-condition-id', conditionId);
-            $('[data-group-id="' + groupId + '"] .conditions-in-group').append($condition);
-            
-            return conditionId;
-        },
-        
-        // Remove condition group
-        removeConditionGroup: function(groupId) {
-            $('[data-group-id="' + groupId + '"]').fadeOut(200, function() {
-                $(this).remove();
-            });
-        },
-        
-        // Initialize rule builder with default state
-        initializeRuleBuilder: function() {
-            // Add initial condition group if none exist
-            if ($('.condition-group').length === 0) {
-                this.addConditionGroup();
-            }
-        },
-        
-        // Handle addon context change
-        handleAddonContextChange: function(context) {
-            this.currentContext = context;
-            
-            if (context === 'specific_product') {
-                $('#product-selector').show();
-            } else {
-                $('#product-selector').hide();
-                this.currentProductId = 0;
-            }
-            
-            // Reload addons data with new context
-            this.loadAddonsData();
-        },
-        
-        // Handle scope change
+
+        /**
+         * Handle scope change
+         */
         handleScopeChange: function(scope) {
             $('.scope-target').hide();
-            
             if (scope === 'category') {
                 $('#category-target').show();
             } else if (scope === 'product') {
                 $('#product-target').show();
             }
         },
-        
-        // Load addons data
-        loadAddonsData: function() {
-            var self = this;
-            var includeProducts = this.currentContext !== 'global_only';
-            var productId = this.currentContext === 'specific_product' ? this.currentProductId : 0;
-            
-            $.ajax({
-                url: wc_product_addons_params.ajax_url,
-                type: 'GET',
-                data: {
-                    action: 'wc_product_addons_get_all_addons',
-                    security: wc_product_addons_params.get_addons_nonce,
-                    include_products: includeProducts,
-                    product_id: productId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        self.addonsData = response.data;
-                        self.addonsCache = response.data.organized || {};
-                        self.updateAddonSelects();
-                    }
-                }
-            });
+
+        /**
+         * Handle context change
+         */
+        handleContextChange: function(context) {
+            if (context === 'specific_product') {
+                $('#product-selector').show();
+            } else {
+                $('#product-selector').hide();
+            }
         },
-        
-        // Update all addon select elements with new data
-        updateAddonSelects: function() {
-            var self = this;
-            
-            $('.addon-select').each(function() {
-                var $select = $(this);
-                var currentValue = $select.val();
-                
-                // Clear and rebuild options
-                $select.empty();
-                $select.append('<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>');
-                
-                // Add global addons group
-                if (self.addonsData.global && Object.keys(self.addonsData.global).length > 0) {
-                    var $globalGroup = $('<optgroup label="🌍 Global Add-ons"></optgroup>');
-                    $.each(self.addonsData.global, function(key, addon) {
-                        $globalGroup.append('<option value="' + key + '">' + addon.name + ' (' + addon.group_name + ')</option>');
-                    });
-                    $select.append($globalGroup);
-                }
-                
-                // Add product-specific addons groups
-                if (self.addonsData.products && Object.keys(self.addonsData.products).length > 0) {
-                    $.each(self.addonsData.products, function(productId, productData) {
-                        if (productData.addons && Object.keys(productData.addons).length > 0) {
-                            var $productGroup = $('<optgroup label="📦 ' + productData.product_name + ' (Product-specific)"></optgroup>');
-                            $.each(productData.addons, function(key, addon) {
-                                $productGroup.append('<option value="' + key + '">' + addon.name + ' (' + addon.product_name + ')</option>');
-                            });
-                            $select.append($productGroup);
-                        }
-                    });
-                }
-                
-                // Restore previous value if it still exists
-                if (currentValue && $select.find('option[value="' + currentValue + '"]').length) {
-                    $select.val(currentValue);
-                }
-            });
-        },
-        
-        // Add new condition
+
+        /**
+         * Add condition
+         */
         addCondition: function() {
             var template = $('#condition-template').html();
-            var conditionId = 'condition_' + Date.now();
-            template = template.replace(/data-condition-id=""/g, 'data-condition-id="' + conditionId + '"');
+            var $condition = $(template);
             
-            $('#conditions-container').append(template);
+            if ($('#condition-groups-container .condition-group').length === 0) {
+                this.addConditionGroup();
+                $('#condition-groups-container .condition-group:first .conditions-in-group').append($condition);
+            } else {
+                $('#condition-groups-container .condition-group:last .conditions-in-group').append($condition);
+            }
+            
+            this.updateConditionNumbers();
         },
-        
-        // Add new action
+
+        /**
+         * Add condition group
+         */
+        addConditionGroup: function() {
+            var template = $('#condition-group-template').html();
+            var $group = $(template);
+            
+            $('#condition-groups-container').append($group);
+            
+            // Hide relationship selector for last group
+            this.updateGroupRelationships();
+        },
+
+        /**
+         * Add condition to specific group
+         */
+        addConditionToGroup: function($group) {
+            var template = $('#condition-template').html();
+            var $condition = $(template);
+            
+            $group.find('.conditions-in-group').append($condition);
+            this.updateConditionNumbers();
+        },
+
+        /**
+         * Add action
+         */
         addAction: function() {
             var template = $('#action-template').html();
-            var actionId = 'action_' + Date.now();
-            template = template.replace(/data-action-id=""/g, 'data-action-id="' + actionId + '"');
+            var $action = $(template);
             
-            $('#actions-container').append(template);
+            $('#actions-container').append($action);
+            this.updateActionNumbers();
         },
-        
-        // Update condition configuration based on type
-        updateConditionConfig: function($select) {
+
+        /**
+         * Remove condition
+         */
+        removeCondition: function($button) {
+            var $condition = $button.closest('.condition-item');
+            var $group = $condition.closest('.condition-group');
+            
+            $condition.fadeOut(200, function() {
+                $(this).remove();
+                
+                // Remove group if empty
+                if ($group.find('.condition-item').length === 0) {
+                    $group.fadeOut(200, function() {
+                        $(this).remove();
+                        self.updateGroupRelationships();
+                    });
+                }
+                
+                self.updateConditionNumbers();
+            });
+        },
+
+        /**
+         * Remove condition group
+         */
+        removeConditionGroup: function($button) {
+            var $group = $button.closest('.condition-group');
+            
+            $group.fadeOut(200, function() {
+                $(this).remove();
+                self.updateGroupRelationships();
+                self.updateConditionNumbers();
+            });
+        },
+
+        /**
+         * Remove action
+         */
+        removeAction: function($button) {
+            var $action = $button.closest('.action-item');
+            
+            $action.fadeOut(200, function() {
+                $(this).remove();
+                self.updateActionNumbers();
+            });
+        },
+
+        /**
+         * Update group relationships visibility
+         */
+        updateGroupRelationships: function() {
+            var $groups = $('.condition-group');
+            $groups.find('.group-relationship').show();
+            $groups.last().find('.group-relationship').hide();
+        },
+
+        /**
+         * Update condition numbers
+         */
+        updateConditionNumbers: function() {
+            $('.condition-item').each(function(index) {
+                $(this).attr('data-condition-id', index + 1);
+            });
+        },
+
+        /**
+         * Update action numbers
+         */
+        updateActionNumbers: function() {
+            $('.action-item').each(function(index) {
+                $(this).attr('data-action-id', index + 1);
+            });
+        },
+
+        /**
+         * Handle condition type change
+         */
+        handleConditionTypeChange: function($select) {
             var type = $select.val();
-            var $config = $select.closest('.condition-row').find('.condition-config');
+            var $config = $select.siblings('.condition-config');
+            
+            $config.empty();
+            
+            if (!type) return;
+            
             var html = '';
             
-            switch(type) {
+            switch (type) {
                 case 'addon_field':
-                    html = this.getAddonFieldConditionConfig();
-                    break;
                 case 'addon_selected':
-                    html = this.getAddonSelectedConditionConfig();
+                    html = this.getAddonFieldConfig();
                     break;
                 case 'product_price':
-                    html = this.getProductPriceConditionConfig();
+                case 'cart_total':
+                    html = this.getPriceConfig();
                     break;
                 case 'product_stock':
-                    html = this.getProductStockConditionConfig();
+                case 'cart_quantity':
+                    html = this.getQuantityConfig();
                     break;
                 case 'product_category':
-                    html = this.getProductCategoryConditionConfig();
-                    break;
-                case 'cart_total':
-                    html = this.getCartTotalConditionConfig();
-                    break;
-                case 'cart_quantity':
-                    html = this.getCartQuantityConditionConfig();
+                    html = this.getCategoryConfig();
                     break;
                 case 'user_role':
-                    html = this.getUserRoleConditionConfig();
+                    html = this.getUserRoleConfig();
                     break;
                 case 'user_logged_in':
-                    html = this.getUserLoggedInConditionConfig();
+                    html = this.getLoggedInConfig();
                     break;
                 case 'current_date':
-                    html = this.getCurrentDateConditionConfig();
+                    html = this.getDateConfig();
                     break;
                 case 'current_time':
-                    html = this.getCurrentTimeConditionConfig();
+                    html = this.getTimeConfig();
                     break;
                 case 'day_of_week':
-                    html = this.getDayOfWeekConditionConfig();
+                    html = this.getDayOfWeekConfig();
                     break;
             }
             
             $config.html(html);
             
             // Initialize any select2 fields
-            $config.find('.addon-select, .option-select').select2({
-                placeholder: wc_product_addons_params.i18n_select_addon,
-                allowClear: true
+            $config.find('.addon-select').each(function() {
+                self.initializeAddonSelect($(this));
             });
         },
-        
-        // Update action configuration based on type
-        updateActionConfig: function($select) {
+
+        /**
+         * Handle action type change
+         */
+        handleActionTypeChange: function($select) {
             var type = $select.val();
-            var $config = $select.closest('.action-row').find('.action-config');
+            var $config = $select.siblings('.action-config');
+            
+            $config.empty();
+            
+            if (!type) return;
+            
             var html = '';
             
-            switch(type) {
+            switch (type) {
                 case 'show_addon':
                 case 'hide_addon':
-                    html = this.getAddonVisibilityActionConfig();
+                case 'make_required':
+                case 'make_optional':
+                    html = this.getAddonTargetConfig();
                     break;
                 case 'show_option':
                 case 'hide_option':
-                    html = this.getOptionVisibilityActionConfig();
+                    html = this.getOptionTargetConfig();
                     break;
                 case 'set_price':
-                    html = this.getSetPriceActionConfig();
-                    break;
                 case 'adjust_price':
-                    html = this.getAdjustPriceActionConfig();
-                    break;
-                case 'make_required':
-                case 'make_optional':
-                    html = this.getRequirementActionConfig();
+                    html = this.getPriceActionConfig(type);
                     break;
                 case 'set_label':
-                    html = this.getSetLabelActionConfig();
-                    break;
                 case 'set_description':
-                    html = this.getSetDescriptionActionConfig();
+                    html = this.getTextActionConfig(type);
                     break;
             }
             
             $config.html(html);
             
             // Initialize any select2 fields
-            $config.find('.addon-select, .option-select').select2({
-                placeholder: wc_product_addons_params.i18n_select_addon,
-                allowClear: true
+            $config.find('.addon-select').each(function() {
+                self.initializeAddonSelect($(this));
             });
-            
-            // Initialize target level display if target level selector exists
-            var $targetLevel = $config.find('.target-level');
-            if ($targetLevel.length) {
-                // Set default to "addon" and trigger change to set initial state
-                $targetLevel.val('addon').trigger('change');
-            }
         },
-        
-        // Condition configuration templates
-        getAddonFieldConditionConfig: function() {
-            var html = '<select class="addon-select" name="condition_addon">';
-            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
-            
-            // Add addons from cache
-            $.each(this.addonsCache, function(key, addon) {
-                html += '<option value="' + key + '">' + addon.name + '</option>';
-            });
-            
-            html += '</select>';
-            html += '<select class="operator-select" name="condition_operator">';
-            html += '<option value="equals">' + wc_product_addons_params.i18n_equals + '</option>';
-            html += '<option value="not_equals">' + wc_product_addons_params.i18n_not_equals + '</option>';
-            html += '<option value="contains">' + wc_product_addons_params.i18n_contains + '</option>';
-            html += '<option value="not_contains">' + wc_product_addons_params.i18n_not_contains + '</option>';
-            html += '<option value="empty">' + wc_product_addons_params.i18n_is_empty + '</option>';
-            html += '<option value="not_empty">' + wc_product_addons_params.i18n_is_not_empty + '</option>';
-            html += '</select>';
-            html += '<input type="text" class="value-input" name="condition_value" placeholder="' + wc_product_addons_params.i18n_value + '">';
-            
-            return html;
-        },
-        
-        getAddonSelectedConditionConfig: function() {
-            var html = '<select class="addon-select" name="condition_addon">';
-            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
-            
-            // Add addons from cache
-            $.each(this.addonsCache, function(key, addon) {
-                html += '<option value="' + key + '">' + addon.name + '</option>';
-            });
-            
-            html += '</select>';
-            html += '<select class="option-select" name="condition_option">';
-            html += '<option value="">' + wc_product_addons_params.i18n_select_option + '</option>';
-            html += '</select>';
-            html += '<select class="state-select" name="condition_state">';
-            html += '<option value="selected">' + wc_product_addons_params.i18n_is_selected + '</option>';
-            html += '<option value="not_selected">' + wc_product_addons_params.i18n_is_not_selected + '</option>';
-            html += '</select>';
-            
-            return html;
-        },
-        
-        getProductPriceConditionConfig: function() {
-            var html = '<select class="operator-select" name="condition_operator">';
-            html += '<option value="equals">' + wc_product_addons_params.i18n_equals + '</option>';
-            html += '<option value="not_equals">' + wc_product_addons_params.i18n_not_equals + '</option>';
-            html += '<option value="greater_than">' + wc_product_addons_params.i18n_greater_than + '</option>';
-            html += '<option value="less_than">' + wc_product_addons_params.i18n_less_than + '</option>';
-            html += '<option value="greater_equals">' + wc_product_addons_params.i18n_greater_equals + '</option>';
-            html += '<option value="less_equals">' + wc_product_addons_params.i18n_less_equals + '</option>';
-            html += '</select>';
-            html += '<input type="number" class="value-input" name="condition_value" placeholder="' + wc_product_addons_params.i18n_price + '" step="0.01">';
-            
-            return html;
-        },
-        
-        // ... (continue with other configuration methods)
-        
-        // Build organized addon select HTML
-        buildAddonSelectHtml: function(includeOptions, includeTargetLevel) {
-            var html = '';
-            
-            // Add target level selector if requested - FIRST
-            if (includeTargetLevel) {
-                html += '<select class="target-level" name="action_target_level">';
-                html += '<option value="addon">' + wc_product_addons_params.i18n_entire_addon + '</option>';
-                html += '<option value="option">' + wc_product_addons_params.i18n_specific_option + '</option>';
-                html += '</select>';
-            }
-            
-            html += '<select class="addon-select" name="action_addon">';
-            html += '<option value="">' + wc_product_addons_params.i18n_select_addon + '</option>';
-            
-            // Add global addons group
-            if (this.addonsData.global && Object.keys(this.addonsData.global).length > 0) {
-                html += '<optgroup label="🌍 Global Add-ons">';
-                $.each(this.addonsData.global, function(key, addon) {
-                    html += '<option value="' + key + '">' + addon.name + ' (' + addon.group_name + ')</option>';
-                });
-                html += '</optgroup>';
-            }
-            
-            // Add product-specific addons groups
-            if (this.addonsData.products && Object.keys(this.addonsData.products).length > 0) {
-                $.each(this.addonsData.products, function(productId, productData) {
-                    if (productData.addons && Object.keys(productData.addons).length > 0) {
-                        html += '<optgroup label="📦 ' + productData.product_name + ' (Product-specific)">';
-                        $.each(productData.addons, function(key, addon) {
-                            html += '<option value="' + key + '">' + addon.name + ' (' + addon.product_name + ')</option>';
-                        });
-                        html += '</optgroup>';
-                    }
-                });
-            }
-            
-            html += '</select>';
-            
-            if (includeOptions) {
-                html += '<select class="option-select" name="action_option" style="display:none;">';
-                html += '<option value="">' + wc_product_addons_params.i18n_select_option + '</option>';
-                html += '</select>';
-            }
-            
-            return html;
-        },
-        
-        // Action configuration templates
-        getAddonVisibilityActionConfig: function() {
-            return this.buildAddonSelectHtml(true, true);
-        },
-        
-        getOptionVisibilityActionConfig: function() {
-            return this.buildAddonSelectHtml(true);
-        },
-        
-        getSetPriceActionConfig: function() {
-            var html = this.buildAddonSelectHtml(true, true);
-            html += '<input type="number" class="price-input" name="action_price" placeholder="' + wc_product_addons_params.i18n_new_price + '" step="0.01">';
-            return html;
-        },
-        
-        getAdjustPriceActionConfig: function() {
-            var html = this.buildAddonSelectHtml(true, true);
-            html += '<select class="adjustment-type" name="action_adjustment_type">';
-            html += '<option value="increase_fixed">' + wc_product_addons_params.i18n_increase_by + '</option>';
-            html += '<option value="decrease_fixed">' + wc_product_addons_params.i18n_decrease_by + '</option>';
-            html += '<option value="increase_percent">' + wc_product_addons_params.i18n_increase_percent + '</option>';
-            html += '<option value="decrease_percent">' + wc_product_addons_params.i18n_decrease_percent + '</option>';
-            html += '</select>';
-            html += '<input type="number" class="value-input" name="action_value" placeholder="' + wc_product_addons_params.i18n_amount + '" step="0.01">';
-            return html;
-        },
-        
-        getRequirementActionConfig: function() {
-            return this.buildAddonSelectHtml(true, true);
-        },
-        
-        getSetLabelActionConfig: function() {
-            var html = this.buildAddonSelectHtml(true, true);
-            html += '<input type="text" class="text-input" name="action_label" placeholder="' + wc_product_addons_params.i18n_new_label + '">';
-            return html;
-        },
-        
-        getSetDescriptionActionConfig: function() {
-            var html = this.buildAddonSelectHtml(true, true);
-            html += '<textarea class="text-input" name="action_description" placeholder="' + wc_product_addons_params.i18n_new_description + '"></textarea>';
-            return html;
-        },
-        
-        // Update target level display (show/hide option selector)
-        updateTargetLevelDisplay: function($targetSelect) {
-            var targetLevel = $targetSelect.val();
-            var $container = $targetSelect.closest('.action-config');
-            var $optionSelect = $container.find('.option-select');
-            
-            if (targetLevel === 'option') {
-                $optionSelect.show();
-                // Trigger addon change to populate options if addon is already selected
-                var $addonSelect = $container.find('.addon-select');
-                if ($addonSelect.val()) {
-                    this.updateAddonOptions($addonSelect);
-                }
-            } else {
-                $optionSelect.hide().val(''); // Hide and clear the value
-            }
-        },
-        
-        // Update addon options when an addon is selected
-        updateAddonOptions: function($select) {
-            var addonId = $select.val();
-            var $optionSelect = $select.siblings('.option-select');
-            
-            if (!$optionSelect.length) {
-                return;
-            }
-            
-            // Clear existing options
-            $optionSelect.empty().append('<option value="">' + wc_product_addons_params.i18n_select_option + '</option>');
-            
-            if (addonId && this.addonsCache[addonId] && this.addonsCache[addonId].options) {
-                var addon = this.addonsCache[addonId];
-                
-                $.each(addon.options, function(index, option) {
-                    $optionSelect.append('<option value="' + option.value + '">' + option.label + '</option>');
-                });
-                
-                $optionSelect.show();
-            } else {
-                $optionSelect.hide();
-            }
-        },
-        
-        // Save rule
+
+        /**
+         * Save rule
+         */
         saveRule: function() {
             var self = this;
-            var ruleData = this.collectRuleData();
+            var data = this.collectRuleData();
             
-            if (!this.validateRule(ruleData)) {
+            if (!this.validateRuleData(data)) {
                 return;
             }
             
-            // Add debug information to the page
-            this.showDebugInfo('Rule Data Being Sent:', ruleData);
-            
-            // Show loading state
-            $('.save-rule').addClass('loading').prop('disabled', true);
+            $('.save-rule').prop('disabled', true).text('Saving...');
             
             $.ajax({
-                url: wc_product_addons_params.ajax_url,
+                url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'wc_product_addons_save_rule',
-                    security: wc_product_addons_params.save_rule_nonce,
-                    rule_id: this.editingRuleId,
-                    rule_data: ruleData
+                    action: 'wc_pao_save_conditional_rule',
+                    rule_data: JSON.stringify(data),
+                    security: wc_product_addons_conditional_logic.nonce
                 },
                 success: function(response) {
-                    self.showDebugInfo('AJAX Response:', response);
-                    
                     if (response.success) {
-                        self.showNotice(wc_product_addons_params.i18n_rule_saved, 'success');
-                        self.resetRuleBuilder();
+                        self.showNotice('Rule saved successfully!', 'success');
+                        self.resetRuleForm();
                         self.loadExistingRules();
+                        self.switchTab('existing-rules');
                     } else {
-                        var errorMessage = wc_product_addons_params.i18n_error_saving;
-                        var debugInfo = '';
-                        
-                        if (response.data) {
-                            if (response.data.message) {
-                                errorMessage = response.data.message;
-                            }
-                            if (response.data.debug) {
-                                debugInfo = ' Debug: ' + JSON.stringify(response.data.debug);
-                            }
-                            if (response.data.error_details) {
-                                debugInfo += ' Details: ' + response.data.error_details;
-                            }
-                        }
-                        
-                        self.showNotice(errorMessage + debugInfo, 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    var errorDetails = 'AJAX Error - Status: ' + status + ', Error: ' + error;
-                    if (xhr.responseText) {
-                        errorDetails += ', Response: ' + xhr.responseText.substring(0, 500);
-                    }
-                    
-                    self.showDebugInfo('AJAX Error Details:', {
-                        status: status,
-                        error: error,
-                        responseText: xhr.responseText,
-                        readyState: xhr.readyState,
-                        statusText: xhr.statusText
-                    });
-                    
-                    self.showNotice(wc_product_addons_params.i18n_error_saving + ' - ' + errorDetails, 'error');
-                },
-                complete: function() {
-                    $('.save-rule').removeClass('loading').prop('disabled', false);
-                }
-            });
-        },
-        
-        // Collect rule data from form
-        collectRuleData: function() {
-            var data = {
-                name: $('#rule-name').val(),
-                scope: $('input[name="rule_scope"]:checked').val(),
-                scope_targets: [],
-                condition_groups: [],
-                actions: []
-            };
-            
-            // Get scope targets
-            if (data.scope === 'category') {
-                data.scope_targets = $('.wc-category-search').val() || [];
-            } else if (data.scope === 'product') {
-                data.scope_targets = $('.wc-product-search').val() || [];
-            }
-            
-            // Collect condition groups
-            $('.condition-group').each(function() {
-                var $group = $(this);
-                var group = {
-                    id: $group.data('group-id'),
-                    logic: $group.find('.group-logic').val() || 'AND',
-                    relationship: $group.find('.group-relationship-selector').val() || 'AND',
-                    conditions: []
-                };
-                
-                // Collect conditions within this group
-                $group.find('.condition-item').each(function() {
-                    var $item = $(this);
-                    var condition = {
-                        id: $item.data('condition-id'),
-                        type: $item.find('.condition-type').val(),
-                        config: {}
-                    };
-                    
-                    // Collect all config inputs
-                    $item.find('.condition-config').find('input, select').each(function() {
-                        var $input = $(this);
-                        var name = $input.attr('name');
-                        if (name) {
-                            condition.config[name] = $input.val();
-                        }
-                    });
-                    
-                    if (condition.type) {
-                        group.conditions.push(condition);
-                    }
-                });
-                
-                if (group.conditions.length > 0) {
-                    data.condition_groups.push(group);
-                }
-            });
-            
-            // For backward compatibility, flatten to simple conditions array
-            data.conditions = [];
-            data.condition_groups.forEach(function(group) {
-                data.conditions = data.conditions.concat(group.conditions);
-            });
-            
-            // Collect actions
-            $('.action-item').each(function() {
-                var $item = $(this);
-                var action = {
-                    id: $item.data('action-id'),
-                    type: $item.find('.action-type').val(),
-                    config: {}
-                };
-                
-                // Collect all config inputs
-                $item.find('.action-config').find('input, select').each(function() {
-                    var $input = $(this);
-                    var name = $input.attr('name');
-                    if (name) {
-                        action.config[name] = $input.val();
-                    }
-                });
-                
-                if (action.type) {
-                    data.actions.push(action);
-                }
-            });
-            
-            return data;
-        },
-        
-        // Validate rule
-        validateRule: function(ruleData) {
-            if (!ruleData.name) {
-                this.showNotice(wc_product_addons_params.i18n_rule_name_required, 'error');
-                return false;
-            }
-            
-            if (ruleData.conditions.length === 0) {
-                this.showNotice(wc_product_addons_params.i18n_at_least_one_condition, 'error');
-                return false;
-            }
-            
-            if (ruleData.actions.length === 0) {
-                this.showNotice(wc_product_addons_params.i18n_at_least_one_action, 'error');
-                return false;
-            }
-            
-            if ((ruleData.scope === 'category' || ruleData.scope === 'product') && ruleData.scope_targets.length === 0) {
-                this.showNotice(wc_product_addons_params.i18n_select_scope_target, 'error');
-                return false;
-            }
-            
-            return true;
-        },
-        
-        // Show notice message
-        showNotice: function(message, type) {
-            // Remove existing notices
-            $('.wc-pao-notice').remove();
-            
-            var noticeClass = type === 'error' ? 'notice-error' : 'notice-success';
-            var notice = '<div class="notice ' + noticeClass + ' wc-pao-notice is-dismissible">' +
-                        '<p>' + message + '</p>' +
-                        '<button type="button" class="notice-dismiss">' +
-                        '<span class="screen-reader-text">Dismiss this notice.</span>' +
-                        '</button>' +
-                        '</div>';
-            
-            $('.wc-addons-conditional-logic-wrap').prepend(notice);
-            
-            // Auto-remove success notices after 3 seconds
-            if (type === 'success') {
-                setTimeout(function() {
-                    $('.wc-pao-notice').fadeOut();
-                }, 3000);
-            }
-        },
-        
-        // Show debug information on the page
-        showDebugInfo: function(title, data) {
-            // Remove existing debug info
-            $('.wc-pao-debug').remove();
-            
-            var debugContent = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-            var debugBox = '<div class="wc-pao-debug" style="background: #f0f0f0; border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 4px;">' +
-                          '<h4 style="margin: 0 0 10px 0; color: #333;">' + title + '</h4>' +
-                          '<div style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">' + debugContent + '</div>' +
-                          '<button type="button" onclick="$(this).closest(\'.wc-pao-debug\').remove();" style="margin-top: 10px; padding: 5px 10px; background: #dc3232; color: white; border: none; border-radius: 3px; cursor: pointer;">Close Debug Info</button>' +
-                          '</div>';
-            
-            $('.wc-addons-conditional-logic-wrap').prepend(debugBox);
-        },
-        
-        // Reset rule builder to initial state
-        resetRuleBuilder: function() {
-            // Clear form inputs
-            $('#rule-name').val('');
-            $('input[name="rule_scope"][value="global"]').prop('checked', true);
-            $('.wc-category-search').val(null).trigger('change');
-            $('.wc-product-search').val(null).trigger('change');
-            
-            // Clear conditions and actions
-            $('.condition-group').remove();
-            $('.action-item').remove();
-            
-            // Reset state
-            this.conditionGroupCounter = 0;
-            this.editingRuleId = null;
-            
-            // Add initial condition group
-            this.addConditionGroup();
-        },
-        
-        // Load existing rules
-        loadExistingRules: function() {
-            var self = this;
-            
-            $.ajax({
-                url: wc_product_addons_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'wc_product_addons_get_rules',
-                    security: wc_product_addons_params.get_rules_nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        self.displayRules(response.data);
-                        self.initializeDragAndDrop();
-                    }
-                }
-            });
-        },
-        
-        // Initialize drag and drop for rules
-        initializeDragAndDrop: function() {
-            var self = this;
-            
-            if (typeof $.fn.sortable !== 'undefined') {
-                $('#rules-list').sortable({
-                    handle: '.drag-handle',
-                    placeholder: 'ui-sortable-placeholder',
-                    helper: 'clone',
-                    start: function(event, ui) {
-                        ui.placeholder.height(ui.item.height());
-                    },
-                    update: function(event, ui) {
-                        self.updateRulePriorities();
-                    }
-                });
-            }
-        },
-        
-        // Update rule priorities after drag and drop
-        updateRulePriorities: function() {
-            var self = this;
-            var ruleIds = [];
-            
-            $('#rules-list .rule-item').each(function() {
-                var ruleId = $(this).data('rule-id');
-                if (ruleId) {
-                    ruleIds.push(ruleId);
-                }
-            });
-            
-            if (ruleIds.length === 0) {
-                return;
-            }
-            
-            $.ajax({
-                url: wc_product_addons_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'wc_product_addons_update_rule_priorities',
-                    security: wc_product_addons_params.update_priorities_nonce,
-                    rule_ids: ruleIds
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update priority numbers in the UI
-                        self.updatePriorityDisplay();
-                        self.showNotice(response.data.message, 'success');
-                    } else {
-                        self.showNotice(response.data.message || 'Error updating priorities', 'error');
+                        self.showNotice(response.data || 'Error saving rule', 'error');
                     }
                 },
                 error: function() {
-                    self.showNotice('Error updating rule priorities', 'error');
+                    self.showNotice('Network error. Please try again.', 'error');
+                },
+                complete: function() {
+                    $('.save-rule').prop('disabled', false).text('Save Rule');
                 }
             });
         },
-        
-        // Update priority display numbers
-        updatePriorityDisplay: function() {
-            var totalRules = $('#rules-list .rule-item').length;
+
+        /**
+         * Edit rule
+         */
+        editRule: function(ruleId) {
+            var self = this;
             
-            $('#rules-list .rule-item').each(function(index) {
-                var priority = totalRules - index;
-                $(this).find('.rule-priority').text('#' + priority);
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_get_rule',
+                    rule_id: ruleId,
+                    security: wc_product_addons_conditional_logic.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.loadRuleIntoForm(response.data);
+                        self.switchTab('new-rule');
+                        
+                        // Scroll to top
+                        $('html, body').animate({
+                            scrollTop: $('.wc-addons-conditional-logic-wrap').offset().top - 50
+                        }, 300);
+                    } else {
+                        self.showNotice('Error loading rule', 'error');
+                    }
+                }
             });
         },
-        
-        // Display rules
-        displayRules: function(rules) {
-            var $rulesList = $('#rules-list');
-            $rulesList.empty();
+
+        /**
+         * Duplicate rule
+         */
+        duplicateRule: function(ruleId) {
+            var self = this;
             
-            if (rules.length === 0) {
-                $rulesList.html('<div class="no-rules-message"><p>' + wc_product_addons_params.i18n_no_rules + '</p></div>');
+            if (!confirm('Are you sure you want to duplicate this rule?')) {
                 return;
             }
             
-            var template = $('#rule-item-template').html();
-            
-            $.each(rules, function(index, rule) {
-                var html = template
-                    .replace(/{rule_id}/g, rule.id)
-                    .replace(/{rule_name}/g, rule.name)
-                    .replace(/{scope}/g, rule.scope)
-                    .replace(/{scope_label}/g, rule.scope_label)
-                    .replace(/{priority}/g, rule.priority || (rules.length - index))
-                    .replace(/{status}/g, rule.status)
-                    .replace(/{status_label}/g, rule.status_label)
-                    .replace(/{toggle_icon}/g, rule.status === 'active' ? 'visibility' : 'hidden')
-                    .replace(/{conditions_summary}/g, rule.conditions_summary)
-                    .replace(/{actions_summary}/g, rule.actions_summary);
-                
-                $rulesList.append(html);
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_duplicate_rule',
+                    rule_id: ruleId,
+                    security: wc_product_addons_conditional_logic.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.showNotice('Rule duplicated successfully!', 'success');
+                        self.loadExistingRules();
+                    } else {
+                        self.showNotice('Error duplicating rule', 'error');
+                    }
+                }
             });
         },
-        
-        // Filter rules
+
+        /**
+         * Toggle rule status
+         */
+        toggleRule: function($ruleItem) {
+            var self = this;
+            var ruleId = $ruleItem.data('rule-id');
+            var $button = $ruleItem.find('.toggle-rule');
+            var $status = $ruleItem.find('.rule-status');
+            var isActive = $status.hasClass('active');
+            
+            // Update UI immediately
+            if (isActive) {
+                $status.removeClass('active').addClass('inactive').text('Inactive');
+                $button.find('.dashicons').removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $status.removeClass('inactive').addClass('active').text('Active');
+                $button.find('.dashicons').removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_toggle_rule',
+                    rule_id: ruleId,
+                    enabled: !isActive,
+                    security: wc_product_addons_conditional_logic.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.showNotice('Rule status updated', 'success');
+                    } else {
+                        // Revert UI on error
+                        if (isActive) {
+                            $status.removeClass('inactive').addClass('active').text('Active');
+                            $button.find('.dashicons').removeClass('dashicons-hidden').addClass('dashicons-visibility');
+                        } else {
+                            $status.removeClass('active').addClass('inactive').text('Inactive');
+                            $button.find('.dashicons').removeClass('dashicons-visibility').addClass('dashicons-hidden');
+                        }
+                        self.showNotice('Error updating rule status', 'error');
+                    }
+                }
+            });
+        },
+
+        /**
+         * Delete rule
+         */
+        deleteRule: function($ruleItem) {
+            var self = this;
+            var ruleId = $ruleItem.data('rule-id');
+            
+            if (!confirm('Are you sure you want to delete this rule? This action cannot be undone.')) {
+                return;
+            }
+            
+            // Add deleting class for animation
+            $ruleItem.addClass('is-deleting');
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_delete_rule',
+                    rule_id: ruleId,
+                    security: wc_product_addons_conditional_logic.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Wait for animation to complete
+                        setTimeout(function() {
+                            $ruleItem.remove();
+                            self.showNotice('Rule deleted successfully', 'success');
+                            
+                            // Show empty message if no rules left
+                            if ($('#rules-list .rule-item').length === 0) {
+                                $('#rules-list').html('<div class="no-rules-message"><p>No rules found. Create your first rule in the "Create New Rule" tab!</p></div>');
+                            }
+                        }, 300);
+                    } else {
+                        $ruleItem.removeClass('is-deleting');
+                        self.showNotice('Error deleting rule', 'error');
+                    }
+                },
+                error: function() {
+                    $ruleItem.removeClass('is-deleting');
+                    self.showNotice('Network error. Please try again.', 'error');
+                }
+            });
+        },
+
+        /**
+         * Filter rules by type
+         */
         filterRules: function(filter) {
             if (filter === 'all') {
                 $('.rule-item').show();
@@ -1092,202 +658,257 @@
                 $('.rule-item[data-scope="' + filter + '"]').show();
             }
         },
-        
-        // Edit rule
-        editRule: function(ruleId) {
+
+        /**
+         * Update rule priorities after reordering
+         */
+        updateRulePriorities: function() {
             var self = this;
+            var priorities = [];
             
+            $('#rules-list .rule-item').each(function(index) {
+                var ruleId = $(this).data('rule-id');
+                var priority = $('#rules-list .rule-item').length - index;
+                
+                priorities.push({
+                    rule_id: ruleId,
+                    priority: priority
+                });
+                
+                // Update UI
+                $(this).find('.rule-priority').text('#' + priority);
+            });
+            
+            // Save new priorities
             $.ajax({
-                url: wc_product_addons_params.ajax_url,
+                url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'wc_product_addons_get_rule',
-                    security: wc_product_addons_params.get_rule_nonce,
-                    rule_id: ruleId
+                    action: 'wc_pao_update_rule_priorities',
+                    priorities: JSON.stringify(priorities),
+                    security: wc_product_addons_conditional_logic.nonce
                 },
                 success: function(response) {
                     if (response.success) {
-                        self.populateRuleBuilder(response.data);
-                        self.editingRuleId = ruleId;
-                        $('html, body').animate({
-                            scrollTop: $('.rule-builder').offset().top - 50
-                        }, 500);
+                        self.showNotice('Rule priorities updated', 'success');
                     } else {
-                        self.showNotice('Failed to load rule: ' + (response.data.message || 'Unknown error'), 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    self.showNotice('Error loading rule: ' + error, 'error');
-                }
-            });
-        },
-        
-        // Populate rule builder with existing rule data
-        populateRuleBuilder: function(rule) {
-            // Reset first
-            this.resetRuleBuilder();
-            
-            // Set basic fields
-            $('#rule-name').val(rule.name);
-            $('input[name="rule_scope"][value="' + rule.scope + '"]').prop('checked', true).trigger('change');
-            
-            // Set scope targets
-            if (rule.scope === 'category' && rule.scope_targets) {
-                // Populate category select
-                var $select = $('.wc-category-search');
-                $.each(rule.scope_targets, function(id, name) {
-                    $select.append(new Option(name, id, true, true));
-                });
-                $select.trigger('change');
-            } else if (rule.scope === 'product' && rule.scope_targets) {
-                // Populate product select
-                var $select = $('.wc-product-search');
-                $.each(rule.scope_targets, function(id, name) {
-                    $select.append(new Option(name, id, true, true));
-                });
-                $select.trigger('change');
-            }
-            
-            // Set condition logic
-            $('#condition-logic').val(rule.condition_logic);
-            
-            // Add conditions
-            var self = this;
-            $.each(rule.conditions, function(index, condition) {
-                self.addCondition();
-                var $condition = $('.condition-item').last();
-                $condition.find('.condition-type').val(condition.type).trigger('change');
-                
-                // Set config values
-                setTimeout(function() {
-                    $.each(condition.config, function(key, value) {
-                        $condition.find('[name="' + key + '"]').val(value).trigger('change');
-                    });
-                }, 100);
-            });
-            
-            // Add actions
-            $.each(rule.actions, function(index, action) {
-                self.addAction();
-                var $action = $('.action-item').last();
-                $action.find('.action-type').val(action.type).trigger('change');
-                
-                // Set config values
-                setTimeout(function() {
-                    $.each(action.config, function(key, value) {
-                        $action.find('[name="' + key + '"]').val(value).trigger('change');
-                    });
-                }, 100);
-            });
-        },
-        
-        // Reset rule builder
-        resetRuleBuilder: function() {
-            this.editingRuleId = null;
-            $('#rule-name').val('');
-            $('input[name="rule_scope"][value="global"]').prop('checked', true).trigger('change');
-            $('.wc-category-search, .wc-product-search').val(null).trigger('change');
-            $('#condition-logic').val('AND');
-            $('#conditions-container, #actions-container').empty();
-        },
-        
-        // Duplicate rule
-        duplicateRule: function(ruleId) {
-            var self = this;
-            
-            $.ajax({
-                url: wc_product_addons_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'wc_product_addons_duplicate_rule',
-                    security: wc_product_addons_params.duplicate_rule_nonce,
-                    rule_id: ruleId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        self.showNotice(wc_product_addons_params.i18n_rule_duplicated, 'success');
-                        self.loadExistingRules();
+                        self.showNotice('Error updating priorities', 'error');
+                        self.loadExistingRules(); // Reload to revert
                     }
                 }
             });
         },
-        
-        // Toggle rule
-        toggleRule: function(ruleId) {
-            var self = this;
-            var $rule = $('.rule-item[data-rule-id="' + ruleId + '"]');
-            
-            $.ajax({
-                url: wc_product_addons_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'wc_product_addons_toggle_rule',
-                    security: wc_product_addons_params.toggle_rule_nonce,
-                    rule_id: ruleId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update UI
-                        if (response.data.status === 'active') {
-                            $rule.find('.rule-status').removeClass('inactive').addClass('active').text(wc_product_addons_params.i18n_active);
-                            $rule.find('.toggle-rule .dashicons').removeClass('dashicons-hidden').addClass('dashicons-visibility');
-                        } else {
-                            $rule.find('.rule-status').removeClass('active').addClass('inactive').text(wc_product_addons_params.i18n_inactive);
-                            $rule.find('.toggle-rule .dashicons').removeClass('dashicons-visibility').addClass('dashicons-hidden');
-                        }
-                    }
-                }
-            });
-        },
-        
-        // Delete rule
-        deleteRule: function(ruleId) {
+
+        /**
+         * Load existing rules
+         */
+        loadExistingRules: function() {
             var self = this;
             
+            $('#rules-list').html('<div class="loading-spinner">Loading rules...</div>');
+            
             $.ajax({
-                url: wc_product_addons_params.ajax_url,
+                url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'wc_product_addons_delete_rule',
-                    security: wc_product_addons_params.delete_rule_nonce,
-                    rule_id: ruleId
+                    action: 'wc_pao_get_rules',
+                    security: wc_product_addons_conditional_logic.nonce
                 },
                 success: function(response) {
-                    if (response.success) {
-                        self.showNotice(wc_product_addons_params.i18n_rule_deleted, 'success');
-                        $('.rule-item[data-rule-id="' + ruleId + '"]').fadeOut(300, function() {
-                            $(this).remove();
-                            if ($('.rule-item').length === 0) {
-                                $('#rules-list').html('<div class="no-rules-message"><p>' + wc_product_addons_params.i18n_no_rules + '</p></div>');
-                            }
+                    if (response.success && response.data.length > 0) {
+                        var html = '';
+                        
+                        $.each(response.data, function(index, rule) {
+                            html += self.buildRuleItem(rule);
                         });
+                        
+                        $('#rules-list').html(html);
+                        
+                        // Reinitialize sortable
+                        self.initSortable();
+                    } else {
+                        $('#rules-list').html('<div class="no-rules-message"><p>No rules found. Create your first rule in the "Create New Rule" tab!</p></div>');
                     }
                 }
             });
         },
-        
-        // Show notice
+
+        /**
+         * Build rule item HTML
+         */
+        buildRuleItem: function(rule) {
+            var template = $('#rule-item-template').html();
+            
+            // Replace placeholders
+            template = template.replace(/{rule_id}/g, rule.rule_id);
+            template = template.replace(/{rule_name}/g, this.escapeHtml(rule.rule_name));
+            template = template.replace(/{priority}/g, rule.priority);
+            template = template.replace(/{scope}/g, rule.rule_type);
+            template = template.replace(/{scope_label}/g, this.getScopeLabel(rule.rule_type));
+            template = template.replace(/{status}/g, rule.enabled ? 'active' : 'inactive');
+            template = template.replace(/{status_label}/g, rule.enabled ? 'Active' : 'Inactive');
+            template = template.replace(/{toggle_icon}/g, rule.enabled ? 'visibility' : 'hidden');
+            template = template.replace(/{conditions_summary}/g, this.getConditionsSummary(rule.conditions));
+            template = template.replace(/{actions_summary}/g, this.getActionsSummary(rule.actions));
+            
+            return template;
+        },
+
+        /**
+         * Show notice
+         */
         showNotice: function(message, type) {
             var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
-            $('.wc-addons-conditional-logic-wrap').before($notice);
+            
+            $('.woocommerce').prepend($notice);
             
             // Auto dismiss after 5 seconds
             setTimeout(function() {
-                $notice.fadeOut(300, function() {
+                $notice.fadeOut(function() {
                     $(this).remove();
                 });
             }, 5000);
+            
+            // Make dismissible
+            $notice.on('click', '.notice-dismiss', function() {
+                $notice.fadeOut(function() {
+                    $(this).remove();
+                });
+            });
+        },
+
+        /**
+         * Helper functions
+         */
+        escapeHtml: function(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        },
+
+        getScopeLabel: function(scope) {
+            switch (scope) {
+                case 'global':
+                    return 'Global';
+                case 'category':
+                    return 'Category';
+                case 'product':
+                    return 'Product';
+                default:
+                    return scope;
+            }
+        },
+
+        getConditionsSummary: function(conditions) {
+            if (!conditions || conditions.length === 0) {
+                return 'No conditions';
+            }
+            
+            var summary = [];
+            try {
+                var parsed = typeof conditions === 'string' ? JSON.parse(conditions) : conditions;
+                // Create a simple summary
+                if (parsed.length > 0) {
+                    summary.push(parsed.length + ' condition' + (parsed.length > 1 ? 's' : ''));
+                }
+            } catch (e) {
+                summary.push('Invalid conditions');
+            }
+            
+            return summary.join(', ');
+        },
+
+        getActionsSummary: function(actions) {
+            if (!actions || actions.length === 0) {
+                return 'No actions';
+            }
+            
+            var summary = [];
+            try {
+                var parsed = typeof actions === 'string' ? JSON.parse(actions) : actions;
+                // Create a simple summary
+                if (parsed.length > 0) {
+                    summary.push(parsed.length + ' action' + (parsed.length > 1 ? 's' : ''));
+                }
+            } catch (e) {
+                summary.push('Invalid actions');
+            }
+            
+            return summary.join(', ');
+        },
+
+        /**
+         * Additional helper methods for configuration
+         */
+        getAddonFieldConfig: function() {
+            return '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                   '<select class="operator"><option value="equals">equals</option><option value="not_equals">not equals</option><option value="contains">contains</option></select>' +
+                   '<input type="text" class="field-value" placeholder="Value">';
+        },
+
+        getPriceConfig: function() {
+            return '<select class="operator"><option value="greater_than">greater than</option><option value="less_than">less than</option><option value="equals">equals</option></select>' +
+                   '<input type="number" class="price-value" placeholder="0.00" step="0.01">';
+        },
+
+        getAddonTargetConfig: function() {
+            return '<select class="target-level"><option value="addon">Entire Add-on</option></select>' +
+                   '<select class="addon-select"><option value="">Select add-on...</option></select>';
+        },
+
+        getOptionTargetConfig: function() {
+            return '<select class="target-level"><option value="option">Specific Option</option></select>' +
+                   '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                   '<select class="option-select" style="display:none;"><option value="">Select option...</option></select>';
+        },
+
+        collectRuleData: function() {
+            // Implementation for collecting all form data
+            return {
+                rule_name: $('#rule-name').val(),
+                rule_scope: $('input[name="rule_scope"]:checked').val(),
+                conditions: this.collectConditions(),
+                actions: this.collectActions()
+                // ... other data
+            };
+        },
+
+        validateRuleData: function(data) {
+            if (!data.rule_name) {
+                this.showNotice('Please enter a rule name', 'error');
+                return false;
+            }
+            
+            if (data.conditions.length === 0) {
+                this.showNotice('Please add at least one condition', 'error');
+                return false;
+            }
+            
+            if (data.actions.length === 0) {
+                this.showNotice('Please add at least one action', 'error');
+                return false;
+            }
+            
+            return true;
+        },
+
+        resetRuleForm: function() {
+            $('#rule-name').val('');
+            $('input[name="rule_scope"][value="global"]').prop('checked', true).trigger('change');
+            $('#condition-groups-container').empty();
+            $('#actions-container').empty();
         }
     };
-    
+
     // Initialize when document is ready
     $(document).ready(function() {
-        if ($('.wc-addons-conditional-logic-wrap').length) {
-            WC_Product_Addons_Conditional_Logic_Admin.init();
-        }
+        WC_PAO_Conditional_Logic_Admin.init();
     });
-    
-    // Export for global access
-    window.WC_Product_Addons_Conditional_Logic_Admin = WC_Product_Addons_Conditional_Logic_Admin;
-    
+
 })(jQuery);

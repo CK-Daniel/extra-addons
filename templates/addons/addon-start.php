@@ -45,7 +45,7 @@ if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_
 
 ?>
 
-<div class="wc-pao-addon-container container-<?=$addon['display']?> <?php echo $required ? 'wc-pao-required-addon' : ''; ?> wc-pao-addon wc-pao-addon-<?php echo sanitize_title( $name ); ?>" data-product-name="<?php echo esc_attr( $product_title ); ?>">
+<div class="wc-pao-addon-container container-<?=$addon['display']?> <?php echo $required ? 'wc-pao-required-addon' : ''; ?> wc-pao-addon wc-pao-addon-<?php echo sanitize_title( $name ); ?>" data-product-name="<?php echo esc_attr( $product_title ); ?>" data-addon-name="<?php echo esc_attr( $name ); ?>" <?php if ( ! empty( $addon['conditional_logic'] ) ) : ?>data-conditional-logic='<?php echo esc_attr( json_encode( $addon['conditional_logic'] ) ); ?>'<?php endif; ?>>
 
 	<?php do_action( 'wc_product_addon_start', $addon ); ?>
 

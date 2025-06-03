@@ -1,1 +1,193 @@
-.wc-pao-addon-image-swatch-select{display:none}.wc-pao-addon-image-swatch{display:inline-block;outline:1px solid #ddd;padding:2px;margin-right:5px;margin-bottom:2px}.wc-pao-addon-image-swatch:active,.wc-pao-addon-image-swatch:focus,.wc-pao-addon-image-swatch:hover{outline:1px solid #666}.wc-pao-addon-image-swatch.selected{outline-color:#0f834d;outline-width:2px}.wc-pao-addon-image-swatch img{max-width:65px;max-height:65px}.wc-pao-addon-heading{margin:1em 0 0}.wc-pao-addon{margin:0 0 1em;padding:0 2px}.wc-pao-addon p{margin:0}.wc-pao-addon .wc-pao-addon-name{margin:0;display:inline-block}.wc-pao-addon label.wc-pao-addon-name{font-weight:700}.wc-pao-addon .wc-pao-addon-description{font-style:italic}.wc-pao-addon .wc-pao-addon-wrap{margin:.5em 0 0 0}.wc-pao-addon .wc-pao-addon-wrap select{width:auto;min-width:50%}.wc-pao-addon .wc-pao-addon-wrap .wc-pao-addon-checkbox{align-self:center;margin-right:4px}.wc-pao-addon .wc-pao-addon-wrap .wc-pao-addon-radio{align-self:center}.wc-pao-cart-quantity-field input{background:0 0!important;outline:0!important;border:0!important;box-shadow:none!important}.wc-pao-addon .wc-pao-addon-wrap label{display:flex}.wc-pao-addon abbr.required{text-decoration:none!important}div.product-addon-totals{margin:20px 0 40px 0;padding:20px 0 0 0;border-top:1px solid #eee;border-bottom:1px solid #eee;overflow:hidden}div.product-addon-totals ul{list-style:none;margin:0}div.product-addon-totals ul li{display:flex;justify-content:space-between;padding:5px 0}div.product-addon-totals ul li.wc-pao-row-quantity-based{padding-left:20px}div.product-addon-totals .wc-pao-subtotal-line{justify-content:flex-end;border-top:1px solid #eee;padding:10px 0;margin-top:20px}.single-product div.product div.product-addon-totals .wc-pao-subtotal-line p.price{margin:0}.tips{cursor:help;text-decoration:none}img.tips{padding:5px 0 0}#tiptip_holder{display:none;z-index:8675309;position:absolute;top:0;left:0}#tiptip_holder.tip_top{padding-bottom:5px}#tiptip_holder.tip_top #tiptip_arrow_inner{margin-top:-7px;margin-left:-6px;border-top-color:#333}#tiptip_holder.tip_bottom{padding-top:5px}#tiptip_holder.tip_bottom #tiptip_arrow_inner{margin-top:-5px;margin-left:-6px;border-bottom-color:#333}#tiptip_holder.tip_right{padding-left:5px}#tiptip_holder.tip_right #tiptip_arrow_inner{margin-top:-6px;margin-left:-5px;border-right-color:#333}#tiptip_holder.tip_left{padding-right:5px}#tiptip_holder.tip_left #tiptip_arrow_inner{margin-top:-6px;margin-left:-7px;border-left-color:#333}#tiptip_content,.chart-tooltip,.wc_error_tip{color:#fff;font-size:.8em;max-width:150px;background:#333;text-align:center;border-radius:3px;padding:.618em 1em;box-shadow:0 1px 3px rgba(0,0,0,.2)}#tiptip_content code,.chart-tooltip code,.wc_error_tip code{padding:1px;background:#888}#tiptip_arrow,#tiptip_arrow_inner{position:absolute;border-color:transparent;border-style:solid;border-width:6px;height:0;width:0}.wc-pao-addon-checkbox-required-error{color:#e2401c}
+/**
+ * WooCommerce Product Add-ons Extra Digital - Frontend Styles
+ */
+
+/* Addon containers */
+.wc-pao-addons-container {
+	margin: 1em 0;
+}
+
+.wc-pao-addon-container {
+	margin-bottom: 1em;
+}
+
+.wc-pao-addon-name {
+	display: block;
+	font-weight: bold;
+	margin-bottom: 0.5em;
+}
+
+.wc-pao-addon-description {
+	margin-bottom: 0.5em;
+	color: #666;
+}
+
+/* Required fields */
+.wc-pao-required-addon .wc-pao-addon-name em.required {
+	color: #a00;
+	font-style: normal;
+}
+
+/* Price display */
+.wc-pao-addon-price {
+	font-weight: normal;
+	color: #77a464;
+}
+
+/* Addon totals */
+.product-addon-totals {
+	clear: both;
+	margin-top: 1em;
+}
+
+.product-addon-totals dl {
+	margin: 0;
+}
+
+.product-addon-totals dt,
+.product-addon-totals dd {
+	display: inline-block;
+	margin: 0;
+	padding: 0.5em 0;
+}
+
+.product-addon-totals dt {
+	font-weight: bold;
+	padding-right: 0.5em;
+}
+
+/* Image swatches */
+.wc-pao-addon-container.container-images {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.wc-pao-addon-container.container-images .addon-option {
+	position: relative;
+	cursor: pointer;
+	border: 2px solid transparent;
+	transition: border-color 0.3s;
+}
+
+.wc-pao-addon-container.container-images .addon-option:hover {
+	border-color: #ddd;
+}
+
+.wc-pao-addon-container.container-images .addon-option.selected {
+	border-color: #333;
+}
+
+.wc-pao-addon-container.container-images .addon-option img {
+	display: block;
+	max-width: 100px;
+	height: auto;
+}
+
+/* Loading state for conditional logic */
+form.cart.processing {
+	position: relative;
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+form.cart.processing::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.5);
+	z-index: 1;
+}
+
+/* Conditional logic messages */
+.addon-conditional-message {
+	padding: 10px;
+	margin: 10px 0;
+	border-radius: 3px;
+}
+
+.addon-conditional-message.message-info {
+	background: #d9edf7;
+	color: #31708f;
+	border: 1px solid #bce8f1;
+}
+
+.addon-conditional-message.message-warning {
+	background: #fcf8e3;
+	color: #8a6d3b;
+	border: 1px solid #faebcc;
+}
+
+.addon-conditional-message.message-error {
+	background: #f2dede;
+	color: #a94442;
+	border: 1px solid #ebccd1;
+}
+
+/* Animations for conditional logic */
+.wc-pao-addon-container {
+	transition: opacity 0.3s ease;
+}
+
+.wc-pao-addon-container.hidden {
+	display: none;
+}
+
+/* File upload */
+.wc-pao-addon-file-upload {
+	margin-top: 0.5em;
+}
+
+/* Custom text fields */
+.wc-pao-addon-custom-text,
+.wc-pao-addon-custom-textarea,
+.wc-pao-addon-custom-price {
+	width: 100%;
+	max-width: 300px;
+}
+
+/* Select dropdowns */
+.wc-pao-addon-select {
+	width: 100%;
+	max-width: 300px;
+}
+
+/* Checkboxes and radio buttons */
+.wc-pao-addon-checkbox-group,
+.wc-pao-addon-radio-group {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.wc-pao-addon-checkbox-group li,
+.wc-pao-addon-radio-group li {
+	margin-bottom: 0.5em;
+}
+
+/* Character counter */
+.wc-pao-addon-chars-remaining {
+	display: block;
+	margin-top: 0.25em;
+	font-size: 0.9em;
+	color: #666;
+}
+
+/* Disabled state */
+.wc-pao-addon-container.disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Responsive styles */
+@media screen and (max-width: 768px) {
+	.wc-pao-addon-custom-text,
+	.wc-pao-addon-custom-textarea,
+	.wc-pao-addon-custom-price,
+	.wc-pao-addon-select {
+		max-width: 100%;
+	}
+}

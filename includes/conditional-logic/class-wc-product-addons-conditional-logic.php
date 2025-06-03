@@ -98,6 +98,15 @@ class WC_Product_Addons_Conditional_Logic {
 		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		
+		// Admin AJAX handlers
+		add_action( 'wp_ajax_wc_pao_get_rules', array( $this, 'ajax_get_rules' ) );
+		add_action( 'wp_ajax_wc_pao_save_conditional_rule', array( $this, 'ajax_save_rule' ) );
+		add_action( 'wp_ajax_wc_pao_get_rule', array( $this, 'ajax_get_rule' ) );
+		add_action( 'wp_ajax_wc_pao_duplicate_rule', array( $this, 'ajax_duplicate_rule' ) );
+		add_action( 'wp_ajax_wc_pao_toggle_rule', array( $this, 'ajax_toggle_rule' ) );
+		add_action( 'wp_ajax_wc_pao_delete_rule', array( $this, 'ajax_delete_rule' ) );
+		add_action( 'wp_ajax_wc_pao_update_rule_priorities', array( $this, 'ajax_update_rule_priorities' ) );
+		
 		// Admin hooks
 		if ( is_admin() ) {
 			add_action( 'woocommerce_product_addons_panel_after_options', array( $this, 'render_conditional_logic_panel' ), 10, 3 );
@@ -775,7 +784,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * @param int $product_id Product ID
 	 * @return array Conditional data
 	 */
-	private function get_product_conditional_data( $product_id ) {
+	public function get_product_conditional_data( $product_id ) {
 		global $wpdb;
 
 		$rules = $wpdb->get_results( $wpdb->prepare(
@@ -807,6 +816,288 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 
 		return $conditional_data;
+	}
+
+	/**
+	 * AJAX handler to get all rules
+	 */
+	public function ajax_get_rules() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		global $wpdb;
+		
+		$rules = $wpdb->get_results( 
+			"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules 
+			ORDER BY priority DESC, rule_id DESC"
+		);
+		
+		wp_send_json_success( $rules );
+	}
+	
+	/**
+	 * AJAX handler to save a rule
+	 */
+	public function ajax_save_rule() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$rule_data = json_decode( stripslashes( $_POST['rule_data'] ), true );
+		
+		if ( empty( $rule_data ) ) {
+			wp_send_json_error( 'Invalid rule data' );
+		}
+		
+		global $wpdb;
+		
+		// Prepare data for insertion
+		$data = array(
+			'rule_name' => sanitize_text_field( $rule_data['rule_name'] ),
+			'rule_type' => sanitize_text_field( $rule_data['rule_scope'] ),
+			'scope_id' => ! empty( $rule_data['scope_id'] ) ? intval( $rule_data['scope_id'] ) : 0,
+			'conditions' => wp_json_encode( $rule_data['conditions'] ),
+			'actions' => wp_json_encode( $rule_data['actions'] ),
+			'priority' => $this->get_next_priority(),
+			'enabled' => 1,
+			'created_at' => current_time( 'mysql' ),
+			'updated_at' => current_time( 'mysql' )
+		);
+		
+		$format = array( '%s', '%s', '%d', '%s', '%s', '%d', '%d', '%s', '%s' );
+		
+		if ( ! empty( $rule_data['rule_id'] ) ) {
+			// Update existing rule
+			$data['updated_at'] = current_time( 'mysql' );
+			unset( $data['created_at'] );
+			
+			$result = $wpdb->update(
+				"{$wpdb->prefix}wc_product_addon_rules",
+				$data,
+				array( 'rule_id' => intval( $rule_data['rule_id'] ) ),
+				$format,
+				array( '%d' )
+			);
+		} else {
+			// Insert new rule
+			$result = $wpdb->insert(
+				"{$wpdb->prefix}wc_product_addon_rules",
+				$data,
+				$format
+			);
+		}
+		
+		if ( false === $result ) {
+			wp_send_json_error( 'Failed to save rule' );
+		}
+		
+		wp_send_json_success( array( 'rule_id' => $wpdb->insert_id ) );
+	}
+	
+	/**
+	 * AJAX handler to get a single rule
+	 */
+	public function ajax_get_rule() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$rule_id = intval( $_POST['rule_id'] );
+		
+		if ( ! $rule_id ) {
+			wp_send_json_error( 'Invalid rule ID' );
+		}
+		
+		global $wpdb;
+		
+		$rule = $wpdb->get_row( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules WHERE rule_id = %d",
+			$rule_id
+		) );
+		
+		if ( ! $rule ) {
+			wp_send_json_error( 'Rule not found' );
+		}
+		
+		// Decode JSON fields
+		$rule->conditions = json_decode( $rule->conditions, true );
+		$rule->actions = json_decode( $rule->actions, true );
+		
+		wp_send_json_success( $rule );
+	}
+	
+	/**
+	 * AJAX handler to duplicate a rule
+	 */
+	public function ajax_duplicate_rule() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$rule_id = intval( $_POST['rule_id'] );
+		
+		if ( ! $rule_id ) {
+			wp_send_json_error( 'Invalid rule ID' );
+		}
+		
+		global $wpdb;
+		
+		// Get the original rule
+		$rule = $wpdb->get_row( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}wc_product_addon_rules WHERE rule_id = %d",
+			$rule_id
+		), ARRAY_A );
+		
+		if ( ! $rule ) {
+			wp_send_json_error( 'Rule not found' );
+		}
+		
+		// Remove the ID and update timestamps
+		unset( $rule['rule_id'] );
+		$rule['rule_name'] = $rule['rule_name'] . ' (Copy)';
+		$rule['created_at'] = current_time( 'mysql' );
+		$rule['updated_at'] = current_time( 'mysql' );
+		$rule['priority'] = $this->get_next_priority();
+		
+		$result = $wpdb->insert(
+			"{$wpdb->prefix}wc_product_addon_rules",
+			$rule
+		);
+		
+		if ( false === $result ) {
+			wp_send_json_error( 'Failed to duplicate rule' );
+		}
+		
+		wp_send_json_success( array( 'rule_id' => $wpdb->insert_id ) );
+	}
+	
+	/**
+	 * AJAX handler to toggle rule status
+	 */
+	public function ajax_toggle_rule() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$rule_id = intval( $_POST['rule_id'] );
+		$enabled = isset( $_POST['enabled'] ) && $_POST['enabled'] === 'true' ? 1 : 0;
+		
+		if ( ! $rule_id ) {
+			wp_send_json_error( 'Invalid rule ID' );
+		}
+		
+		global $wpdb;
+		
+		$result = $wpdb->update(
+			"{$wpdb->prefix}wc_product_addon_rules",
+			array( 
+				'enabled' => $enabled,
+				'updated_at' => current_time( 'mysql' )
+			),
+			array( 'rule_id' => $rule_id ),
+			array( '%d', '%s' ),
+			array( '%d' )
+		);
+		
+		if ( false === $result ) {
+			wp_send_json_error( 'Failed to update rule status' );
+		}
+		
+		wp_send_json_success();
+	}
+	
+	/**
+	 * AJAX handler to delete a rule
+	 */
+	public function ajax_delete_rule() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$rule_id = intval( $_POST['rule_id'] );
+		
+		if ( ! $rule_id ) {
+			wp_send_json_error( 'Invalid rule ID' );
+		}
+		
+		global $wpdb;
+		
+		// Delete associated conditions and actions first
+		$wpdb->delete( "{$wpdb->prefix}wc_product_addon_conditions", array( 'rule_id' => $rule_id ), array( '%d' ) );
+		$wpdb->delete( "{$wpdb->prefix}wc_product_addon_actions", array( 'rule_id' => $rule_id ), array( '%d' ) );
+		
+		// Delete the rule
+		$result = $wpdb->delete(
+			"{$wpdb->prefix}wc_product_addon_rules",
+			array( 'rule_id' => $rule_id ),
+			array( '%d' )
+		);
+		
+		if ( false === $result ) {
+			wp_send_json_error( 'Failed to delete rule' );
+		}
+		
+		wp_send_json_success();
+	}
+	
+	/**
+	 * AJAX handler to update rule priorities
+	 */
+	public function ajax_update_rule_priorities() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$priorities = json_decode( stripslashes( $_POST['priorities'] ), true );
+		
+		if ( empty( $priorities ) ) {
+			wp_send_json_error( 'Invalid priority data' );
+		}
+		
+		global $wpdb;
+		
+		foreach ( $priorities as $priority_data ) {
+			$wpdb->update(
+				"{$wpdb->prefix}wc_product_addon_rules",
+				array( 
+					'priority' => intval( $priority_data['priority'] ),
+					'updated_at' => current_time( 'mysql' )
+				),
+				array( 'rule_id' => intval( $priority_data['rule_id'] ) ),
+				array( '%d', '%s' ),
+				array( '%d' )
+			);
+		}
+		
+		wp_send_json_success();
+	}
+	
+	/**
+	 * Get the next available priority
+	 */
+	private function get_next_priority() {
+		global $wpdb;
+		
+		$max_priority = $wpdb->get_var(
+			"SELECT MAX(priority) FROM {$wpdb->prefix}wc_product_addon_rules"
+		);
+		
+		return intval( $max_priority ) + 1;
 	}
 }
 
