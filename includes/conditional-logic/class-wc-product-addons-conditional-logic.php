@@ -106,6 +106,8 @@ class WC_Product_Addons_Conditional_Logic {
 		add_action( 'wp_ajax_wc_pao_toggle_rule', array( $this, 'ajax_toggle_rule' ) );
 		add_action( 'wp_ajax_wc_pao_delete_rule', array( $this, 'ajax_delete_rule' ) );
 		add_action( 'wp_ajax_wc_pao_update_rule_priorities', array( $this, 'ajax_update_rule_priorities' ) );
+		add_action( 'wp_ajax_wc_pao_get_addons', array( $this, 'ajax_get_addons' ) );
+		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
 		
 		// Admin hooks
 		if ( is_admin() ) {
@@ -722,9 +724,19 @@ class WC_Product_Addons_Conditional_Logic {
 				WC_PRODUCT_ADDONS_VERSION
 			);
 			
-			wp_localize_script( 'wc-product-addons-conditional-logic-admin', 'wc_product_addons_conditional_logic', array(
+			wp_localize_script( 'wc-product-addons-conditional-logic-admin', 'wc_product_addons_params', array(
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'wc-product-addons-conditional-logic' ),
+				'save_rule_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'get_rule_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'get_rules_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'duplicate_rule_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'toggle_rule_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'delete_rule_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'update_priorities_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'get_addons_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'get_addon_options_nonce' => wp_create_nonce( 'wc_pao_conditional_logic' ),
+				'search_products_nonce' => wp_create_nonce( 'search-products' ),
+				'search_categories_nonce' => wp_create_nonce( 'search-categories' ),
 				'i18n'     => array(
 					'add_condition'    => __( 'Add Condition', 'woocommerce-product-addons-extra-digital' ),
 					'add_action'       => __( 'Add Action', 'woocommerce-product-addons-extra-digital' ),
@@ -1101,6 +1113,197 @@ class WC_Product_Addons_Conditional_Logic {
 		);
 		
 		return intval( $max_priority ) + 1;
+	}
+	
+	/**
+	 * AJAX handler to get available addons
+	 */
+	public function ajax_get_addons() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'all';
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		
+		$addons = array();
+		
+		// Get global addons
+		$global_addons = $this->get_global_addons();
+		if ( ! empty( $global_addons ) ) {
+			$addons['global'] = array(
+				'label' => 'Global Add-ons',
+				'addons' => $global_addons
+			);
+		}
+		
+		// Get product-specific addons if context allows
+		if ( $context === 'all' || ( $context === 'specific_product' && $product_id ) ) {
+			$product_addons = $this->get_product_addons( $product_id );
+			if ( ! empty( $product_addons ) ) {
+				$addons['product'] = array(
+					'label' => 'Product Add-ons',
+					'addons' => $product_addons
+				);
+			}
+		}
+		
+		wp_send_json_success( $addons );
+	}
+	
+	/**
+	 * AJAX handler to get addon options
+	 */
+	public function ajax_get_addon_options() {
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$addon_id = isset( $_POST['addon_id'] ) ? sanitize_text_field( $_POST['addon_id'] ) : '';
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		
+		if ( empty( $addon_id ) ) {
+			wp_send_json_error( 'Invalid addon ID' );
+		}
+		
+		$options = $this->get_addon_options_by_id( $addon_id, $product_id );
+		
+		wp_send_json_success( $options );
+	}
+	
+	/**
+	 * Get global addons
+	 */
+	private function get_global_addons() {
+		$addons = array();
+		
+		// Get global addon groups
+		$global_groups = get_posts( array(
+			'post_type' => 'global_product_addon',
+			'post_status' => 'publish',
+			'numberposts' => -1,
+			'meta_key' => '_priority',
+			'orderby' => 'meta_value_num',
+			'order' => 'ASC'
+		) );
+		
+		foreach ( $global_groups as $group ) {
+			$group_addons = get_post_meta( $group->ID, '_product_addons', true );
+			
+			if ( is_array( $group_addons ) ) {
+				foreach ( $group_addons as $addon ) {
+					if ( isset( $addon['name'] ) && ! empty( $addon['name'] ) ) {
+						$addons[] = array(
+							'id' => 'global_' . $group->ID . '_' . sanitize_title( $addon['name'] ),
+							'name' => $addon['name'],
+							'type' => $addon['type'],
+							'group_id' => $group->ID,
+							'group_name' => $group->post_title
+						);
+					}
+				}
+			}
+		}
+		
+		return $addons;
+	}
+	
+	/**
+	 * Get product-specific addons
+	 */
+	private function get_product_addons( $product_id ) {
+		$addons = array();
+		
+		if ( ! $product_id ) {
+			return $addons;
+		}
+		
+		$product_addons = get_post_meta( $product_id, '_product_addons', true );
+		
+		if ( is_array( $product_addons ) ) {
+			foreach ( $product_addons as $addon ) {
+				if ( isset( $addon['name'] ) && ! empty( $addon['name'] ) ) {
+					$addons[] = array(
+						'id' => 'product_' . $product_id . '_' . sanitize_title( $addon['name'] ),
+						'name' => $addon['name'],
+						'type' => $addon['type'],
+						'product_id' => $product_id
+					);
+				}
+			}
+		}
+		
+		return $addons;
+	}
+	
+	/**
+	 * Get addon options by ID
+	 */
+	private function get_addon_options_by_id( $addon_id, $product_id ) {
+		$options = array();
+		
+		// Parse addon ID to determine source
+		if ( strpos( $addon_id, 'global_' ) === 0 ) {
+			// Global addon
+			$parts = explode( '_', $addon_id );
+			if ( count( $parts ) >= 3 ) {
+				$group_id = intval( $parts[1] );
+				$addon_name = str_replace( '_', ' ', implode( '_', array_slice( $parts, 2 ) ) );
+				
+				$group_addons = get_post_meta( $group_id, '_product_addons', true );
+				
+				if ( is_array( $group_addons ) ) {
+					foreach ( $group_addons as $addon ) {
+						if ( isset( $addon['name'] ) && sanitize_title( $addon['name'] ) === sanitize_title( $addon_name ) ) {
+							if ( isset( $addon['options'] ) && is_array( $addon['options'] ) ) {
+								foreach ( $addon['options'] as $option ) {
+									if ( isset( $option['label'] ) ) {
+										$options[] = array(
+											'value' => sanitize_title( $option['label'] ),
+											'label' => $option['label']
+										);
+									}
+								}
+							}
+							break;
+						}
+					}
+				}
+			}
+		} elseif ( strpos( $addon_id, 'product_' ) === 0 ) {
+			// Product-specific addon
+			$parts = explode( '_', $addon_id );
+			if ( count( $parts ) >= 3 ) {
+				$product_id = intval( $parts[1] );
+				$addon_name = str_replace( '_', ' ', implode( '_', array_slice( $parts, 2 ) ) );
+				
+				$product_addons = get_post_meta( $product_id, '_product_addons', true );
+				
+				if ( is_array( $product_addons ) ) {
+					foreach ( $product_addons as $addon ) {
+						if ( isset( $addon['name'] ) && sanitize_title( $addon['name'] ) === sanitize_title( $addon_name ) ) {
+							if ( isset( $addon['options'] ) && is_array( $addon['options'] ) ) {
+								foreach ( $addon['options'] as $option ) {
+									if ( isset( $option['label'] ) ) {
+										$options[] = array(
+											'value' => sanitize_title( $option['label'] ),
+											'label' => $option['label']
+										);
+									}
+								}
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		return $options;
 	}
 }
 

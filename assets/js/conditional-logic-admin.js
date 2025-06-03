@@ -844,6 +844,99 @@
         },
 
         /**
+         * Initialize addon select field
+         */
+        initializeAddonSelect: function($select) {
+            var self = this;
+            
+            // Load addons via AJAX
+            $select.html('<option value="">Loading addons...</option>');
+            
+            $.ajax({
+                url: wc_product_addons_params.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_get_addons',
+                    context: $('input[name="addon_context"]:checked').val() || 'all',
+                    product_id: $('.wc-product-search-context').val() || 0,
+                    security: wc_product_addons_params.get_addons_nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        var options = '<option value="">Select add-on...</option>';
+                        
+                        $.each(response.data, function(groupKey, group) {
+                            if (group.addons && group.addons.length > 0) {
+                                options += '<optgroup label="' + group.label + '">';
+                                $.each(group.addons, function(index, addon) {
+                                    options += '<option value="' + addon.id + '">' + addon.name + ' (' + addon.type + ')</option>';
+                                });
+                                options += '</optgroup>';
+                            }
+                        });
+                        
+                        $select.html(options);
+                    } else {
+                        $select.html('<option value="">No add-ons found</option>');
+                    }
+                },
+                error: function() {
+                    $select.html('<option value="">Error loading add-ons</option>');
+                }
+            });
+            
+            // If the select has a class indicating it should load options for a specific addon
+            $select.on('change', function() {
+                var addonId = $(this).val();
+                var $optionSelect = $(this).siblings('.option-select');
+                
+                if ($optionSelect.length > 0 && addonId) {
+                    self.loadAddonOptions($optionSelect, addonId);
+                    $optionSelect.show();
+                } else if ($optionSelect.length > 0) {
+                    $optionSelect.hide();
+                }
+            });
+        },
+        
+        /**
+         * Load addon options
+         */
+        loadAddonOptions: function($select, addonId) {
+            var self = this;
+            
+            // Show loading state
+            $select.html('<option value="">Loading options...</option>');
+            
+            $.ajax({
+                url: wc_product_addons_params.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_get_addon_options',
+                    addon_id: addonId,
+                    product_id: $('.wc-product-search-context').val() || 0,
+                    security: wc_product_addons_params.get_addon_options_nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data && response.data.length > 0) {
+                        var options = '<option value="">Select option...</option>';
+                        
+                        $.each(response.data, function(index, option) {
+                            options += '<option value="' + option.value + '">' + option.label + '</option>';
+                        });
+                        
+                        $select.html(options);
+                    } else {
+                        $select.html('<option value="">No options available</option>');
+                    }
+                },
+                error: function() {
+                    $select.html('<option value="">Error loading options</option>');
+                }
+            });
+        },
+
+        /**
          * Additional helper methods for configuration
          */
         getAddonFieldConfig: function() {
