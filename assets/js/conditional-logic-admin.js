@@ -376,8 +376,10 @@
             
             switch (type) {
                 case 'addon_field':
-                case 'addon_selected':
                     html = this.getAddonFieldConfig();
+                    break;
+                case 'addon_selected':
+                    html = this.getAddonSelectedConfig();
                     break;
                 case 'product_price':
                 case 'cart_total':
@@ -945,6 +947,12 @@
             return '<select class="addon-select"><option value="">Select add-on...</option></select>' +
                    '<select class="operator"><option value="equals">equals</option><option value="not_equals">not equals</option><option value="contains">contains</option></select>' +
                    '<input type="text" class="field-value" placeholder="Value">';
+        },
+
+        getAddonSelectedConfig: function() {
+            return '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                   '<select class="operator"><option value="is_selected">is selected</option><option value="is_not_selected">is not selected</option></select>' +
+                   '<select class="option-select" style="display:none;"><option value="">Select option...</option></select>';
         },
 
         getPriceConfig: function() {
