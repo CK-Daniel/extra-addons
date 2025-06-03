@@ -126,14 +126,14 @@
             if ($.fn.selectWoo) {
                 $('.wc-product-search').selectWoo({
                     ajax: {
-                        url: ajaxurl,
+                        url: wc_product_addons_params.ajax_url || ajaxurl,
                         dataType: 'json',
                         delay: 250,
                         data: function(params) {
                             return {
                                 action: 'woocommerce_json_search_products',
                                 term: params.term,
-                                security: wc_product_addons_conditional_logic.nonce
+                                security: wc_product_addons_params.search_products_nonce
                             };
                         },
                         processResults: function(data) {
@@ -154,14 +154,14 @@
 
                 $('.wc-category-search').selectWoo({
                     ajax: {
-                        url: ajaxurl,
+                        url: wc_product_addons_params.ajax_url || ajaxurl,
                         dataType: 'json',
                         delay: 250,
                         data: function(params) {
                             return {
                                 action: 'woocommerce_json_search_categories',
                                 term: params.term,
-                                security: wc_product_addons_conditional_logic.nonce
+                                security: wc_product_addons_params.search_categories_nonce
                             };
                         },
                         processResults: function(data) {
@@ -470,12 +470,12 @@
             $('.save-rule').prop('disabled', true).text('Saving...');
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_save_conditional_rule',
                     rule_data: JSON.stringify(data),
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.save_rule_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -503,12 +503,12 @@
             var self = this;
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_get_rule',
                     rule_id: ruleId,
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.get_rule_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -537,12 +537,12 @@
             }
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_duplicate_rule',
                     rule_id: ruleId,
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.duplicate_rule_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -575,13 +575,13 @@
             }
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_toggle_rule',
                     rule_id: ruleId,
                     enabled: !isActive,
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.toggle_rule_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -616,12 +616,12 @@
             $ruleItem.addClass('is-deleting');
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_delete_rule',
                     rule_id: ruleId,
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.delete_rule_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -681,12 +681,12 @@
             
             // Save new priorities
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_update_rule_priorities',
                     priorities: JSON.stringify(priorities),
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.update_priorities_nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -708,11 +708,11 @@
             $('#rules-list').html('<div class="loading-spinner">Loading rules...</div>');
             
             $.ajax({
-                url: ajaxurl,
+                url: wc_product_addons_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'wc_pao_get_rules',
-                    security: wc_product_addons_conditional_logic.nonce
+                    security: wc_product_addons_params.get_rules_nonce
                 },
                 success: function(response) {
                     if (response.success && response.data.length > 0) {
@@ -867,16 +867,190 @@
                    '<select class="addon-select"><option value="">Select add-on...</option></select>' +
                    '<select class="option-select" style="display:none;"><option value="">Select option...</option></select>';
         },
+        
+        getQuantityConfig: function() {
+            return '<select class="operator"><option value="greater_than">greater than</option><option value="less_than">less than</option><option value="equals">equals</option></select>' +
+                   '<input type="number" class="quantity-value" placeholder="0" min="0">';
+        },
+        
+        getCategoryConfig: function() {
+            return '<select class="category-select" multiple><option value="">Select categories...</option></select>';
+        },
+        
+        getUserRoleConfig: function() {
+            return '<select class="operator"><option value="is">is</option><option value="is_not">is not</option></select>' +
+                   '<select class="role-select"><option value="guest">Guest</option><option value="customer">Customer</option><option value="subscriber">Subscriber</option><option value="administrator">Administrator</option></select>';
+        },
+        
+        getLoggedInConfig: function() {
+            return '<select class="logged-in-value"><option value="yes">Logged In</option><option value="no">Not Logged In</option></select>';
+        },
+        
+        getDateConfig: function() {
+            return '<select class="operator"><option value="before">before</option><option value="after">after</option><option value="on">on</option></select>' +
+                   '<input type="date" class="date-value">';
+        },
+        
+        getTimeConfig: function() {
+            return '<select class="operator"><option value="before">before</option><option value="after">after</option><option value="between">between</option></select>' +
+                   '<input type="time" class="time-value">' +
+                   '<input type="time" class="time-value-end" style="display:none;" placeholder="End time">';
+        },
+        
+        getDayOfWeekConfig: function() {
+            return '<select class="operator"><option value="is">is</option><option value="is_not">is not</option></select>' +
+                   '<select class="day-value" multiple><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select>';
+        },
+        
+        getPriceActionConfig: function(type) {
+            if (type === 'set_price') {
+                return '<select class="target-level"><option value="addon">Entire Add-on</option><option value="option">Specific Option</option></select>' +
+                       '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                       '<select class="option-select" style="display:none;"><option value="">Select option...</option></select>' +
+                       '<input type="number" class="price-value" placeholder="0.00" step="0.01">';
+            } else {
+                return '<select class="target-level"><option value="addon">Entire Add-on</option><option value="option">Specific Option</option></select>' +
+                       '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                       '<select class="option-select" style="display:none;"><option value="">Select option...</option></select>' +
+                       '<select class="adjustment-type"><option value="add">Add</option><option value="subtract">Subtract</option><option value="multiply">Multiply by</option><option value="percentage">Percentage</option></select>' +
+                       '<input type="number" class="adjustment-value" placeholder="0.00" step="0.01">';
+            }
+        },
+        
+        getTextActionConfig: function(type) {
+            var label = type === 'set_label' ? 'New Label' : 'New Description';
+            return '<select class="target-level"><option value="addon">Entire Add-on</option></select>' +
+                   '<select class="addon-select"><option value="">Select add-on...</option></select>' +
+                   '<textarea class="text-value" placeholder="' + label + '" rows="3" style="width: 100%;"></textarea>';
+        },
+        
+        cancelRule: function() {
+            if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+                this.resetRuleForm();
+                this.switchTab('existing-rules');
+            }
+        },
+        
+        loadRuleIntoForm: function(rule) {
+            // Reset form first
+            this.resetRuleForm();
+            
+            // Set basic fields
+            $('#rule-name').val(rule.rule_name);
+            $('input[name="rule_scope"][value="' + rule.rule_type + '"]').prop('checked', true).trigger('change');
+            
+            // Set rule ID for updating
+            $('#rule-name').data('rule-id', rule.rule_id);
+            
+            // Load conditions
+            if (rule.conditions && rule.conditions.length > 0) {
+                // Implementation to recreate condition UI from data
+                // This would need to parse the conditions and create the appropriate UI elements
+            }
+            
+            // Load actions
+            if (rule.actions && rule.actions.length > 0) {
+                // Implementation to recreate action UI from data
+                // This would need to parse the actions and create the appropriate UI elements
+            }
+            
+            // Change button text
+            $('.save-rule').text('Update Rule');
+        },
 
         collectRuleData: function() {
-            // Implementation for collecting all form data
-            return {
+            var data = {
                 rule_name: $('#rule-name').val(),
                 rule_scope: $('input[name="rule_scope"]:checked').val(),
                 conditions: this.collectConditions(),
                 actions: this.collectActions()
-                // ... other data
             };
+            
+            // Add scope-specific data
+            if (data.rule_scope === 'category') {
+                data.scope_categories = $('.wc-category-search').val();
+            } else if (data.rule_scope === 'product') {
+                data.scope_products = $('.wc-product-search').val();
+            }
+            
+            return data;
+        },
+        
+        collectConditions: function() {
+            var conditions = [];
+            var self = this;
+            
+            $('.condition-group').each(function() {
+                var $group = $(this);
+                var groupConditions = [];
+                
+                $group.find('.condition-item').each(function() {
+                    var $condition = $(this);
+                    var type = $condition.find('.condition-type').val();
+                    
+                    if (type) {
+                        var condition = {
+                            type: type,
+                            config: {}
+                        };
+                        
+                        // Collect condition configuration based on type
+                        $condition.find('.condition-config input, .condition-config select').each(function() {
+                            var $input = $(this);
+                            var className = $input.attr('class');
+                            if (className) {
+                                // Extract meaningful name from class
+                                var name = className.split(' ')[0].replace('-', '_');
+                                condition.config[name] = $input.val();
+                            }
+                        });
+                        
+                        groupConditions.push(condition);
+                    }
+                });
+                
+                if (groupConditions.length > 0) {
+                    conditions.push({
+                        match_type: $group.find('.group-logic').val() || 'AND',
+                        conditions: groupConditions,
+                        relationship: $group.find('.group-relationship-selector').val() || 'AND'
+                    });
+                }
+            });
+            
+            return conditions;
+        },
+        
+        collectActions: function() {
+            var actions = [];
+            var self = this;
+            
+            $('.action-item').each(function() {
+                var $action = $(this);
+                var type = $action.find('.action-type').val();
+                
+                if (type) {
+                    var action = {
+                        type: type,
+                        config: {}
+                    };
+                    
+                    // Collect action configuration based on type
+                    $action.find('.action-config input, .action-config select, .action-config textarea').each(function() {
+                        var $input = $(this);
+                        var className = $input.attr('class');
+                        if (className) {
+                            // Extract meaningful name from class
+                            var name = className.split(' ')[0].replace('-', '_');
+                            action.config[name] = $input.val();
+                        }
+                    });
+                    
+                    actions.push(action);
+                }
+            });
+            
+            return actions;
         },
 
         validateRuleData: function(data) {
@@ -908,6 +1082,12 @@
 
     // Initialize when document is ready
     $(document).ready(function() {
+        // Check if localization data is available
+        if (typeof wc_product_addons_params === 'undefined') {
+            console.error('WC Product Addons Conditional Logic: Localization data not found. Script may not be properly enqueued.');
+            return;
+        }
+        
         WC_PAO_Conditional_Logic_Admin.init();
     });
 

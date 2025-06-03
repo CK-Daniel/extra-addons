@@ -483,7 +483,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler for condition evaluation with cascading support
 	 */
 	public function ajax_evaluate_conditions() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		$product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
 		$addon_data = isset( $_POST['addon_data'] ) ? json_decode( stripslashes( $_POST['addon_data'] ), true ) : array();
@@ -703,7 +703,10 @@ class WC_Product_Addons_Conditional_Logic {
 	public function enqueue_admin_scripts() {
 		$screen = get_current_screen();
 		
-		if ( $screen && in_array( $screen->id, array( 'product', 'edit-product' ) ) ) {
+		// Check if we're on the product edit pages or the conditional logic admin page
+		if ( $screen && ( in_array( $screen->id, array( 'product', 'edit-product' ) ) || 
+			( isset( $_GET['page'] ) && $_GET['page'] === 'addon-conditional-logic' ) ) ) {
+			
 			wp_enqueue_script(
 				'wc-product-addons-conditional-logic-admin',
 				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic-admin.js',
@@ -822,7 +825,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to get all rules
 	 */
 	public function ajax_get_rules() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -842,7 +845,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to save a rule
 	 */
 	public function ajax_save_rule() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -903,7 +906,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to get a single rule
 	 */
 	public function ajax_get_rule() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -937,7 +940,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to duplicate a rule
 	 */
 	public function ajax_duplicate_rule() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -984,7 +987,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to toggle rule status
 	 */
 	public function ajax_toggle_rule() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -1021,7 +1024,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to delete a rule
 	 */
 	public function ajax_delete_rule() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
@@ -1057,7 +1060,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to update rule priorities
 	 */
 	public function ajax_update_rule_priorities() {
-		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
