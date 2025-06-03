@@ -711,6 +711,9 @@
             
             $('#rules-list').html('<div class="loading-spinner">Loading rules...</div>');
             
+            console.log('Loading rules with nonce:', wc_product_addons_params.get_rules_nonce);
+            console.log('AJAX URL:', wc_product_addons_params.ajax_url);
+            
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
                 type: 'POST',
@@ -733,6 +736,11 @@
                     } else {
                         $('#rules-list').html('<div class="no-rules-message"><p>No rules found. Create your first rule in the "Create New Rule" tab!</p></div>');
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', xhr.status, xhr.statusText);
+                    console.error('Response:', xhr.responseText);
+                    $('#rules-list').html('<div class="no-rules-message"><p>Error loading rules. Check console for details.</p></div>');
                 }
             });
         },
