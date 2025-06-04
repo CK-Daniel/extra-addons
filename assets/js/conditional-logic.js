@@ -58,14 +58,18 @@
 		 */
 		bindEvents: function() {
 			var self = this;
+			
+			console.log('🔗 Binding events to form elements...');
 
-			// Listen for addon field changes
-			this.form.on('change', '.product-addon input, .product-addon select, .product-addon textarea', function() {
+			// Listen for addon field changes - use broader selectors
+			this.form.on('change', '.wc-pao-addon input, .wc-pao-addon select, .wc-pao-addon textarea, .product-addon input, .product-addon select, .product-addon textarea', function() {
+				console.log('📝 Change event detected on:', $(this)[0]);
 				self.handleFieldChange($(this));
 			});
 
 			// Listen for input events on text fields
-			this.form.on('input', '.product-addon input[type="text"], .product-addon textarea', function() {
+			this.form.on('input', '.wc-pao-addon input[type="text"], .wc-pao-addon textarea, .product-addon input[type="text"], .product-addon textarea', function() {
+				console.log('⌨️ Input event detected on:', $(this)[0]);
 				self.handleFieldInput($(this));
 			});
 
@@ -102,10 +106,60 @@
 			console.log('📝 Cataloging addons...');
 			this.addons.each(function() {
 				var addon = $(this);
-				var name = addon.data('addon-name') || addon.find('.addon-name').text().trim() || addon.find('label').first().text().trim();
+				
+				// Try multiple ways to get the addon name based on the HTML structure
+				var name = null;
+				
+				// Method 1: Check data-addon-name on the container
+				name = addon.data('addon-name');
+				
+				// Method 2: Check data-addon-name on label inside
+				if (!name) {
+					name = addon.find('label[data-addon-name]').data('addon-name');
+				}
+				
+				// Method 3: Check wc-pao-addon-name class text
+				if (!name) {
+					var labelText = addon.find('.wc-pao-addon-name').text();
+					if (labelText) {
+						// Clean up the label text (remove required asterisk, etc.)
+						name = labelText.replace(/\s*\*\s*$/, '').replace(/\s+$/, '').trim();
+					}
+				}
+				
+				// Method 4: Extract from CSS classes (e.g., wc-pao-addon-test)
+				if (!name) {
+					var classes = addon.attr('class') || '';
+					var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+					if (match && match[1] && match[1] !== 'container') {
+						name = match[1];
+					}
+				}
+				
+				// Method 5: Get from input/select name attribute
+				if (!name) {
+					var field = addon.find('input, select, textarea').first();
+					if (field.length) {
+						var fieldName = field.attr('name') || field.attr('id') || '';
+						// Extract from addon-ID-name-index pattern
+						var match = fieldName.match(/addon-\d+-([^-]+)-/);
+						if (match && match[1]) {
+							name = match[1];
+						}
+					}
+				}
+				
+				console.log('🔍 Addon detection methods:', {
+					'data-addon-name (container)': addon.data('addon-name'),
+					'data-addon-name (label)': addon.find('label[data-addon-name]').data('addon-name'),
+					'label text': addon.find('.wc-pao-addon-name').text().trim(),
+					'css classes': addon.attr('class'),
+					'field name': addon.find('input, select, textarea').first().attr('name'),
+					'final name': name
+				});
 				
 				if (name) {
-					console.log('  - Found addon:', name);
+					console.log('  ✅ Found addon:', name);
 					this.originalAddons[name] = {
 						element: addon,
 						data: addon.data(),
@@ -113,39 +167,83 @@
 						prices: this.extractPrices(addon)
 					};
 				} else {
-					console.warn('  - Addon found but no name detected:', addon);
+					console.warn('  ❌ Addon found but no name detected:', addon[0]);
 				}
 			}.bind(this));
 			
 			console.log('📋 Total addons cataloged:', Object.keys(this.originalAddons).length);
+			console.log('📋 Addon names found:', Object.keys(this.originalAddons));
 		},
 
 		/**
 		 * Handle field change
 		 */
 		handleFieldChange: function(field) {
-			var addon = field.closest('.product-addon');
-			var addonName = addon.data('addon-name') || addon.find('.addon-name').text();
+			var addon = field.closest('.wc-pao-addon, .product-addon');
 			
-			// Update state
-			this.updateSelection(addonName, field);
+			// Use our improved name detection
+			var addonName = this.getAddonNameFromElement(addon);
 			
-			// Debounce evaluation
-			this.debounceEvaluation();
+			console.log('🔄 Field changed in addon:', addonName, 'value:', this.getFieldValue(field));
+			
+			if (addonName) {
+				// Update state
+				this.updateSelection(addonName, field);
+				
+				// Debounce evaluation
+				this.debounceEvaluation();
+			}
+		},
+
+		/**
+		 * Get addon name from element
+		 */
+		getAddonNameFromElement: function(addon) {
+			if (!addon || addon.length === 0) return null;
+			
+			// Try multiple methods (same as in cataloging)
+			var name = addon.data('addon-name') || 
+				addon.find('label[data-addon-name]').data('addon-name') ||
+				addon.find('.wc-pao-addon-name').text().replace(/\s*\*\s*$/, '').trim();
+				
+			// Try CSS class matching
+			if (!name) {
+				var classes = addon.attr('class') || '';
+				var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+				if (match && match[1] && match[1] !== 'container') {
+					name = match[1];
+				}
+			}
+			
+			// Try field name extraction
+			if (!name) {
+				var field = addon.find('input, select, textarea').first();
+				if (field.length) {
+					var fieldName = field.attr('name') || field.attr('id') || '';
+					var match = fieldName.match(/addon-\d+-([^-]+)-/);
+					if (match && match[1]) {
+						name = match[1];
+					}
+				}
+			}
+			
+			return name;
 		},
 
 		/**
 		 * Handle field input (for text fields)
 		 */
 		handleFieldInput: function(field) {
-			var addon = field.closest('.product-addon');
-			var addonName = addon.data('addon-name') || addon.find('.addon-name').text();
+			var addon = field.closest('.wc-pao-addon, .product-addon');
+			var addonName = this.getAddonNameFromElement(addon);
 			
-			// Update state
-			this.updateSelection(addonName, field);
-			
-			// Debounce evaluation with longer delay for typing
-			this.debounceEvaluation(500);
+			if (addonName) {
+				// Update state
+				this.updateSelection(addonName, field);
+				
+				// Debounce evaluation with longer delay for typing
+				this.debounceEvaluation(500);
+			}
 		},
 
 		/**
@@ -262,46 +360,51 @@
 			// Show loading state
 			this.showLoading();
 
-			// Prepare addon data for evaluation
+			// Prepare addon data for evaluation using our cataloged addons
 			var addonData = [];
-			this.addons.each(function() {
-				var addon = $(this);
-				var addonName = addon.data('addon-name') || addon.find('.addon-name').text().trim();
+			
+			for (var addonName in this.originalAddons) {
+				var addonInfo = this.originalAddons[addonName];
+				var addon = addonInfo.element;
 				
-				if (addonName) {
-					// Collect addon options for rule evaluation
-					var options = [];
-					addon.find('input, select, textarea').each(function() {
-						var field = $(this);
-						var value = self.getFieldValue(field);
-						var label = self.getFieldLabel(field);
-						
-						if (field.is('select')) {
-							field.find('option').each(function() {
-								var option = $(this);
+				console.log('🔧 Preparing data for addon:', addonName);
+				
+				// Collect addon options for rule evaluation
+				var options = [];
+				addon.find('input, select, textarea').each(function() {
+					var field = $(this);
+					
+					if (field.is('select')) {
+						field.find('option').each(function() {
+							var option = $(this);
+							if (option.val()) { // Skip empty option
 								options.push({
 									value: option.val(),
-									label: option.text(),
+									label: option.text().trim(),
 									selected: option.is(':selected')
 								});
-							});
-						} else if (field.attr('type') === 'radio' || field.attr('type') === 'checkbox') {
+							}
+						});
+					} else if (field.attr('type') === 'radio' || field.attr('type') === 'checkbox') {
+						if (field.val()) { // Skip empty values
 							options.push({
 								value: field.val(),
-								label: label,
+								label: self.getFieldLabel(field),
 								selected: field.is(':checked')
 							});
 						}
-					});
+					}
+				});
 
-					addonData.push({
-						name: addonName,
-						id: addon.data('addon-id') || addonName,
-						options: options,
-						current_value: self.state.selections[addonName] ? self.state.selections[addonName].value : null
-					});
-				}
-			});
+				console.log('  📋 Options found:', options);
+
+				addonData.push({
+					name: addonName,
+					id: addonName, // Use the cleaned name as ID
+					options: options,
+					current_value: self.state.selections[addonName] ? self.state.selections[addonName].value : null
+				});
+			}
 
 			console.log('📊 Addon data prepared for evaluation:', addonData);
 
@@ -531,14 +634,47 @@
 		 * Get addon by name
 		 */
 		getAddonByName: function(name) {
+			console.log('🔍 Looking for addon by name:', name);
+			
+			// First try our cataloged addons
+			if (this.originalAddons && this.originalAddons[name]) {
+				console.log('  ✅ Found in catalog:', name);
+				return this.originalAddons[name].element;
+			}
+			
+			// Fallback to searching through DOM
 			var found = null;
 			this.addons.each(function() {
 				var addon = $(this);
-				if (addon.data('addon-name') === name) {
+				
+				// Try multiple name detection methods
+				var addonName = addon.data('addon-name') || 
+					addon.find('label[data-addon-name]').data('addon-name') ||
+					addon.find('.wc-pao-addon-name').text().replace(/\s*\*\s*$/, '').trim();
+					
+				// Also try CSS class matching
+				if (!addonName) {
+					var classes = addon.attr('class') || '';
+					var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+					if (match && match[1] && match[1] !== 'container') {
+						addonName = match[1];
+					}
+				}
+				
+				console.log('  🔍 Checking addon:', addonName, 'against target:', name);
+				
+				if (addonName === name || addonName === name.toLowerCase() || addonName === name.replace(/[^a-zA-Z0-9]/g, '')) {
 					found = addon;
-					return false;
+					console.log('  ✅ Found match:', addonName);
+					return false; // Break the loop
 				}
 			});
+			
+			if (!found) {
+				console.warn('  ❌ Addon not found:', name);
+				console.log('  📋 Available addons:', Object.keys(this.originalAddons || {}));
+			}
+			
 			return found;
 		},
 

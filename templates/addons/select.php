@@ -49,7 +49,13 @@ $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc
 				$price_display = $price_raw;
 			}
 			?>
-			<option data-raw-price="<?php echo esc_attr( $price_raw ); ?>" data-price="<?php echo esc_attr( $price_display ); ?>" data-price-type="<?php echo esc_attr( $price_type ); ?>" value="<?php echo sanitize_title( $label ) . '-' . $loop; ?>" data-label="<?php echo esc_attr( wptexturize( $label ) ); ?>"><?php echo wptexturize( $label ) . ' ' . $price_for_display; ?></option>
+			<option data-raw-price="<?php echo esc_attr( $price_raw ); ?>" 
+			        data-price="<?php echo esc_attr( $price_display ); ?>" 
+			        data-price-type="<?php echo esc_attr( $price_type ); ?>" 
+			        value="<?php echo sanitize_title( $label ) . '-' . $loop; ?>" 
+			        data-label="<?php echo esc_attr( wptexturize( $label ) ); ?>"
+			        data-option-key="<?php echo esc_attr( sanitize_title( $label ) ); ?>"
+			        data-option-index="<?php echo esc_attr( $loop ); ?>"><?php echo wptexturize( $label ) . ' ' . $price_for_display; ?></option>
 		<?php } ?>
 
 	</select>

@@ -45,9 +45,19 @@ if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_
 
 ?>
 
-<div class="wc-pao-addon-container container-<?=$addon['display']?> <?php echo $required ? 'wc-pao-required-addon' : ''; ?> wc-pao-addon wc-pao-addon-<?php echo sanitize_title( $name ); ?>" data-product-name="<?php echo esc_attr( $product_title ); ?>">
+<div class="wc-pao-addon-container container-<?=$addon['display']?> <?php echo $required ? 'wc-pao-required-addon' : ''; ?> wc-pao-addon wc-pao-addon-<?php echo sanitize_title( $name ); ?>" 
+     data-product-name="<?php echo esc_attr( $product_title ); ?>"
+     data-addon-id="<?php echo esc_attr( $addon['field_name'] ?? sanitize_title( $name ) ); ?>"
+     data-addon-name="<?php echo esc_attr( $name ); ?>"
+     data-addon-type="<?php echo esc_attr( $addon_type ); ?>"
+     data-addon-required="<?php echo $required ? '1' : '0'; ?>">
 
-	<?php do_action( 'wc_product_addon_start', $addon ); ?>
+	<?php 
+	do_action( 'wc_product_addon_start', $addon );
+	
+	// Inject conditional logic data
+	do_action( 'wc_product_addon_conditional_logic_data', $addon, $name );
+	?>
 
 	<?php
 	if ( $name ) {

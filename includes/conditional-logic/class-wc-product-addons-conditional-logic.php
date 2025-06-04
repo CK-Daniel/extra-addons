@@ -108,6 +108,7 @@ class WC_Product_Addons_Conditional_Logic {
 		
 		// Frontend hooks
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
+		add_action( 'wc_product_addon_conditional_logic_data', array( $this, 'inject_addon_conditional_data' ), 10, 2 );
 		
 		// Allow third-party condition registration
 		do_action( 'woocommerce_product_addons_register_conditions', $this );
@@ -745,6 +746,84 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 		
 		return $addon_id;
+	}
+
+	/**
+	 * Inject conditional logic data into addon containers
+	 */
+	public function inject_addon_conditional_data( $addon, $addon_name ) {
+		// Get the current product ID
+		global $post;
+		$product_id = $post ? $post->ID : 0;
+		
+		// Generate a unique addon identifier
+		$addon_key = $this->generate_addon_key( $addon, $addon_name );
+		
+		// Check if this addon has any rules targeting it
+		$has_rules = $this->addon_has_conditional_rules( $addon_key, $product_id );
+		
+		// Output data attributes for JavaScript
+		echo sprintf(
+			'<script type="application/json" class="wc-pao-conditional-data" data-addon-key="%s">%s</script>',
+			esc_attr( $addon_key ),
+			wp_json_encode( array(
+				'addon_key' => $addon_key,
+				'addon_name' => $addon_name,
+				'field_name' => $addon['field_name'] ?? '',
+				'has_rules' => $has_rules,
+				'options' => $this->prepare_addon_options_data( $addon )
+			) )
+		);
+	}
+
+	/**
+	 * Generate a unique addon key
+	 */
+	private function generate_addon_key( $addon, $addon_name ) {
+		$field_name = $addon['field_name'] ?? sanitize_title( $addon_name );
+		return $addon_name . '_' . $field_name;
+	}
+
+	/**
+	 * Check if addon has conditional rules
+	 */
+	private function addon_has_conditional_rules( $addon_key, $product_id ) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'wc_product_addon_conditional_rules';
+		
+		$count = $wpdb->get_var( $wpdb->prepare("
+			SELECT COUNT(*) FROM {$table_name} 
+			WHERE status = 'active' 
+			AND (
+				scope = 'global' 
+				OR (scope = 'product' AND FIND_IN_SET(%d, scope_targets))
+			)
+			AND (actions LIKE %s OR actions LIKE %s)
+		", $product_id, '%' . $addon_key . '%', '%' . explode('_', $addon_key)[0] . '%' ) );
+		
+		return $count > 0;
+	}
+
+	/**
+	 * Prepare addon options data
+	 */
+	private function prepare_addon_options_data( $addon ) {
+		$options = array();
+		
+		if ( isset( $addon['options'] ) && is_array( $addon['options'] ) ) {
+			foreach ( $addon['options'] as $index => $option ) {
+				$options[] = array(
+					'label' => $option['label'] ?? '',
+					'value' => sanitize_title( $option['label'] ?? '' ) . '-' . ($index + 1),
+					'key' => sanitize_title( $option['label'] ?? '' ),
+					'index' => $index + 1,
+					'price' => $option['price'] ?? 0
+				);
+			}
+		}
+		
+		return $options;
 	}
 
 	/**
