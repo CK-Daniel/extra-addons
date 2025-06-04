@@ -1174,7 +1174,7 @@
                         self.editingRuleId = ruleId;
                         
                         // Switch to the create rule tab
-                        $('.nav-tab[href="#create-rule"]').click();
+                        $('#new-rule-tab').click();
                         
                         $('html, body').animate({
                             scrollTop: $('.rule-builder').offset().top - 50
@@ -1193,6 +1193,8 @@
         
         // Populate rule builder with existing rule data
         populateRuleBuilder: function(rule) {
+            console.log('populateRuleBuilder called with rule:', rule);
+            
             // Reset first
             this.resetRuleBuilder();
             
@@ -1217,47 +1219,76 @@
                 $select.trigger('change');
             }
             
-            // Set condition logic
-            $('#condition-logic').val(rule.condition_logic);
-            
-            // Add conditions
             var self = this;
-            $.each(rule.conditions, function(index, condition) {
-                self.addCondition();
-                var $condition = $('.condition-item').last();
-                $condition.find('.condition-type').val(condition.type).trigger('change');
-                
-                // Set config values
-                setTimeout(function() {
-                    $.each(condition.config, function(key, value) {
-                        $condition.find('[name="' + key + '"]').val(value).trigger('change');
-                    });
-                }, 100);
-            });
             
-            // Add actions
-            $.each(rule.actions, function(index, action) {
-                self.addAction();
-                var $action = $('.action-item').last();
-                $action.find('.action-type').val(action.type).trigger('change');
+            // Handle conditions - work with the new condition groups system
+            if (rule.conditions && rule.conditions.length > 0) {
+                // Add first condition group if none exist
+                if ($('.condition-group').length === 0) {
+                    this.addConditionGroup();
+                }
                 
-                // Set config values
-                setTimeout(function() {
-                    $.each(action.config, function(key, value) {
-                        $action.find('[name="' + key + '"]').val(value).trigger('change');
-                    });
-                }, 100);
-            });
+                // Add conditions to the first group
+                $.each(rule.conditions, function(index, condition) {
+                    var groupId = $('.condition-group').first().data('group-id');
+                    if (index > 0) {
+                        // Add more conditions to the same group
+                        self.addConditionToGroup(groupId);
+                    }
+                    
+                    var $condition = $('.condition-group').first().find('.condition-item').eq(index);
+                    $condition.find('.condition-type').val(condition.type).trigger('change');
+                    
+                    // Set config values with delay to allow DOM updates
+                    setTimeout(function() {
+                        $.each(condition.config, function(key, value) {
+                            $condition.find('[name="' + key + '"]').val(value).trigger('change');
+                        });
+                    }, 200 + (index * 100));
+                });
+            }
+            
+            // Handle actions
+            if (rule.actions && rule.actions.length > 0) {
+                $.each(rule.actions, function(index, action) {
+                    // Always add new action for each one
+                    self.addAction();
+                    var $action = $('.action-item').last();
+                    
+                    $action.find('.action-type').val(action.type).trigger('change');
+                    
+                    // Set config values with delay to allow DOM updates
+                    setTimeout(function() {
+                        $.each(action.config, function(key, value) {
+                            $action.find('[name="' + key + '"]').val(value).trigger('change');
+                        });
+                    }, 300 + (index * 100));
+                });
+            } else {
+                // Add at least one action if none exist
+                this.addAction();
+            }
+            
+            console.log('populateRuleBuilder completed');
         },
         
         // Reset rule builder
         resetRuleBuilder: function() {
+            console.log('resetRuleBuilder called');
             this.editingRuleId = null;
             $('#rule-name').val('');
             $('input[name="rule_scope"][value="global"]').prop('checked', true).trigger('change');
             $('.wc-category-search, .wc-product-search').val(null).trigger('change');
-            $('#condition-logic').val('AND');
-            $('#conditions-container, #actions-container').empty();
+            
+            // Clear condition groups
+            $('#condition-groups-container').empty();
+            this.conditionGroupCounter = 0;
+            
+            // Clear actions
+            $('#actions-container').empty();
+            
+            // Add initial condition group
+            this.addConditionGroup();
         },
         
         // Duplicate rule
