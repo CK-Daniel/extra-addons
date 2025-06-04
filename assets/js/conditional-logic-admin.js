@@ -478,6 +478,9 @@
                 placeholder: wc_product_addons_params.i18n_select_addon,
                 allowClear: true
             });
+            
+            // Populate the addon select with current addon data
+            this.updateAddonSelects();
         },
         
         // Update action configuration based on type
@@ -527,6 +530,9 @@
                 // Set default to "addon" and trigger change to set initial state
                 $targetLevel.val('addon').trigger('change');
             }
+            
+            // Populate the addon select with current addon data
+            this.updateAddonSelects();
         },
         
         // Condition configuration templates
