@@ -54,6 +54,7 @@ add_filter( 'woocommerce_translations_updates_for_woocommerce-product-addons-ext
 
 add_action( 'plugins_loaded', 'woocommerce_product_addons_init', 9 );
 
+
 function woocommerce_product_addons_init() {
 	load_plugin_textdomain( 'woocommerce-product-addons-extra-digital', false, plugin_basename( dirname( __FILE__ ) ) . '/languages' );
 
@@ -138,7 +139,14 @@ function woocommerce_product_addons_init() {
 				new WC_Product_Addons_Cart_Ajax();
 				
 				// Initialize conditional logic system
+				error_log( 'Main plugin: Initializing conditional logic system' );
 				WC_Product_Addons_Conditional_Logic::get_instance();
+				error_log( 'Main plugin: Conditional logic system initialized' );
+				
+				// Include test AJAX page for debugging
+				if ( is_admin() ) {
+					include_once( dirname( __FILE__ ) . '/test-admin-ajax.php' );
+				}
 			}
 
 			/**

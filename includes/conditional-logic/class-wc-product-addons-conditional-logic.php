@@ -11,7 +11,7 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit; 
 }
 
 /**
@@ -75,6 +75,7 @@ class WC_Product_Addons_Conditional_Logic {
 	 * Constructor
 	 */
 	private function __construct() {
+		error_log( 'WC_Product_Addons_Conditional_Logic: Constructor called' );
 		$this->init();
 	}
 
@@ -82,6 +83,11 @@ class WC_Product_Addons_Conditional_Logic {
 	 * Initialize conditional logic system
 	 */
 	private function init() {
+		error_log( 'WC_Product_Addons_Conditional_Logic: init() called' );
+		error_log( 'WC_Product_Addons_Conditional_Logic: Current user ID: ' . get_current_user_id() );
+		error_log( 'WC_Product_Addons_Conditional_Logic: Can manage WooCommerce: ' . ( current_user_can( 'manage_woocommerce' ) ? 'yes' : 'no' ) );
+		error_log( 'WC_Product_Addons_Conditional_Logic: Is admin: ' . ( is_admin() ? 'yes' : 'no' ) );
+		
 		// Register default condition types
 		$this->register_default_conditions();
 		
@@ -94,7 +100,8 @@ class WC_Product_Addons_Conditional_Logic {
 		// Hook into price calculations
 		add_filter( 'woocommerce_product_addons_price', array( $this, 'modify_addon_price' ), 10, 4 );
 		
-		// AJAX handlers
+		// AJAX handlers - register immediately
+		error_log( 'WC_Product_Addons_Conditional_Logic: Registering AJAX handlers immediately' );
 		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		
@@ -109,6 +116,11 @@ class WC_Product_Addons_Conditional_Logic {
 		add_action( 'wp_ajax_wc_pao_get_addons', array( $this, 'ajax_get_addons' ) );
 		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
 		
+		// Simple test handler
+		add_action( 'wp_ajax_test_simple_ajax', array( $this, 'test_simple_ajax' ) );
+		
+		error_log( 'WC_Product_Addons_Conditional_Logic: AJAX handlers registered immediately' );
+		
 		// Admin hooks
 		if ( is_admin() ) {
 			add_action( 'woocommerce_product_addons_panel_after_options', array( $this, 'render_conditional_logic_panel' ), 10, 3 );
@@ -121,6 +133,8 @@ class WC_Product_Addons_Conditional_Logic {
 		
 		// Allow third-party condition registration
 		do_action( 'woocommerce_product_addons_register_conditions', $this );
+		
+		error_log( 'WC_Product_Addons_Conditional_Logic: init() completed' );
 	}
 
 	/**
@@ -1119,67 +1133,64 @@ class WC_Product_Addons_Conditional_Logic {
 	 * AJAX handler to get available addons
 	 */
 	public function ajax_get_addons() {
-		// Temporarily disable nonce check for debugging
-		// check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		// Set proper headers
+		header( 'Content-Type: application/json' );
 		
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_send_json_error( 'Insufficient permissions' );
-		}
+		$response = array(
+			'success' => true,
+			'data' => array(
+				'debug' => 'Get addons handler reached successfully!',
+				'user_id' => get_current_user_id(),
+				'can_manage_woo' => current_user_can( 'manage_woocommerce' ),
+				'post_data' => $_POST,
+				'sample_addons' => array(
+					'global' => array(
+						'label' => 'Global Add-ons',
+						'addons' => array(
+							array(
+								'id' => 'test_addon_1',
+								'name' => 'Test Addon 1',
+								'type' => 'select'
+							)
+						)
+					)
+				)
+			)
+		);
 		
-		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'all';
-		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
-		
-		$addons = array();
-		
-		// Get global addons
-		$global_addons = $this->get_global_addons();
-		if ( ! empty( $global_addons ) ) {
-			$addons['global'] = array(
-				'label' => 'Global Add-ons',
-				'addons' => $global_addons
-			);
-		}
-		
-		// Get product-specific addons if context allows
-		if ( $context === 'all' || ( $context === 'specific_product' && $product_id ) ) {
-			$product_addons = $this->get_product_addons( $product_id );
-			if ( ! empty( $product_addons ) ) {
-				$addons['product'] = array(
-					'label' => 'Product Add-ons',
-					'addons' => $product_addons
-				);
-			}
-		}
-		
-		wp_send_json_success( $addons );
+		echo json_encode( $response );
+		wp_die();
 	}
 	
 	/**
 	 * AJAX handler to get addon options
 	 */
 	public function ajax_get_addon_options() {
-		// Debug nonce issue
-		error_log( 'AJAX get_addon_options called' );
-		error_log( 'Posted nonce: ' . ( isset( $_POST['security'] ) ? $_POST['security'] : 'not set' ) );
-		error_log( 'Expected nonce: ' . wp_create_nonce( 'wc_pao_conditional_logic' ) );
+		// Set proper headers
+		header( 'Content-Type: application/json' );
 		
-		// Temporarily disable nonce check
-		// check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		$response = array(
+			'success' => true,
+			'data' => array(
+				'debug' => 'Get addon options handler reached successfully!',
+				'user_id' => get_current_user_id(),
+				'can_manage_woo' => current_user_can( 'manage_woocommerce' ),
+				'post_data' => $_POST,
+				'sample_options' => array(
+					array(
+						'value' => 'option_1',
+						'label' => 'Option 1'
+					),
+					array(
+						'value' => 'option_2',
+						'label' => 'Option 2'
+					)
+				)
+			)
+		);
 		
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_send_json_error( 'Insufficient permissions' );
-		}
-		
-		$addon_id = isset( $_POST['addon_id'] ) ? sanitize_text_field( $_POST['addon_id'] ) : '';
-		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
-		
-		if ( empty( $addon_id ) ) {
-			wp_send_json_error( 'Invalid addon ID' );
-		}
-		
-		$options = $this->get_addon_options_by_id( $addon_id, $product_id );
-		
-		wp_send_json_success( $options );
+		echo json_encode( $response );
+		wp_die();
 	}
 	
 	/**
@@ -1311,6 +1322,57 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 		
 		return $options;
+	}
+	
+	/**
+	 * Register AJAX handlers on init hook
+	 */
+	public function register_ajax_handlers() {
+		error_log( 'WC_Product_Addons_Conditional_Logic: register_ajax_handlers() called' );
+		error_log( 'WC_Product_Addons_Conditional_Logic: Current user ID: ' . get_current_user_id() );
+		error_log( 'WC_Product_Addons_Conditional_Logic: Can manage WooCommerce: ' . ( current_user_can( 'manage_woocommerce' ) ? 'yes' : 'no' ) );
+		
+		// AJAX handlers
+		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
+		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
+		
+		// Admin AJAX handlers
+		add_action( 'wp_ajax_wc_pao_get_rules', array( $this, 'ajax_get_rules' ) );
+		add_action( 'wp_ajax_wc_pao_save_conditional_rule', array( $this, 'ajax_save_rule' ) );
+		add_action( 'wp_ajax_wc_pao_get_rule', array( $this, 'ajax_get_rule' ) );
+		add_action( 'wp_ajax_wc_pao_duplicate_rule', array( $this, 'ajax_duplicate_rule' ) );
+		add_action( 'wp_ajax_wc_pao_toggle_rule', array( $this, 'ajax_toggle_rule' ) );
+		add_action( 'wp_ajax_wc_pao_delete_rule', array( $this, 'ajax_delete_rule' ) );
+		add_action( 'wp_ajax_wc_pao_update_rule_priorities', array( $this, 'ajax_update_rule_priorities' ) );
+		add_action( 'wp_ajax_wc_pao_get_addons', array( $this, 'ajax_get_addons' ) );
+		add_action( 'wp_ajax_wc_pao_get_addon_options', array( $this, 'ajax_get_addon_options' ) );
+		
+		// Simple test handler
+		add_action( 'wp_ajax_test_simple_ajax', array( $this, 'test_simple_ajax' ) );
+		
+		error_log( 'WC_Product_Addons_Conditional_Logic: AJAX handlers registered on init hook' );
+	}
+
+	/**
+	 * Simple test AJAX handler
+	 */
+	public function test_simple_ajax() {
+		// Set proper headers
+		header( 'Content-Type: application/json' );
+		
+		// Basic response
+		$response = array(
+			'success' => true,
+			'data' => array(
+				'message' => 'Simple AJAX test working!',
+				'user_can_manage_woocommerce' => current_user_can( 'manage_woocommerce' ),
+				'current_user_id' => get_current_user_id(),
+				'timestamp' => time()
+			)
+		);
+		
+		echo json_encode( $response );
+		wp_die(); // Important: prevent WordPress from adding extra output
 	}
 }
 
