@@ -228,98 +228,275 @@
 		evaluateAllConditions: function() {
 			var self = this;
 			
-			// Check if we have conditional logic data
-			if (!window.wc_product_addons_conditional_data) {
-				return;
-			}
+			console.log('🔄 Starting conditional logic evaluation...');
+			console.log('Current state:', this.state);
 
 			// Show loading state
 			this.showLoading();
 
-			// Prepare addon data
+			// Prepare addon data for evaluation
 			var addonData = [];
 			this.addons.each(function() {
 				var addon = $(this);
-				var data = addon.data('conditional-logic');
-				if (data) {
+				var addonName = addon.data('addon-name') || addon.find('.addon-name').text().trim();
+				
+				if (addonName) {
+					// Collect addon options for rule evaluation
+					var options = [];
+					addon.find('input, select, textarea').each(function() {
+						var field = $(this);
+						var value = self.getFieldValue(field);
+						var label = self.getFieldLabel(field);
+						
+						if (field.is('select')) {
+							field.find('option').each(function() {
+								var option = $(this);
+								options.push({
+									value: option.val(),
+									label: option.text(),
+									selected: option.is(':selected')
+								});
+							});
+						} else if (field.attr('type') === 'radio' || field.attr('type') === 'checkbox') {
+							options.push({
+								value: field.val(),
+								label: label,
+								selected: field.is(':checked')
+							});
+						}
+					});
+
 					addonData.push({
-						name: addon.data('addon-name'),
-						conditional_logic: data
+						name: addonName,
+						id: addon.data('addon-id') || addonName,
+						options: options,
+						current_value: self.state.selections[addonName] ? self.state.selections[addonName].value : null
 					});
 				}
 			});
 
-			if (addonData.length === 0) {
-				this.hideLoading();
-				return;
-			}
+			console.log('📊 Addon data prepared for evaluation:', addonData);
 
-			// Make AJAX request
+			// Make AJAX request to evaluate rules from database
 			$.ajax({
 				url: wc_product_addons_conditional_logic.ajax_url,
 				type: 'POST',
 				data: {
-					action: 'wc_product_addons_evaluate_conditions',
+					action: 'wc_product_addons_evaluate_rules',
 					security: wc_product_addons_conditional_logic.nonce,
 					product_id: this.state.product.id,
 					addon_data: JSON.stringify(addonData),
-					selections: JSON.stringify(this.state.selections)
+					selections: JSON.stringify(this.state.selections),
+					user_data: JSON.stringify(this.state.user),
+					cart_data: JSON.stringify(this.state.cart)
 				},
 				success: function(response) {
+					console.log('✅ Rule evaluation response:', response);
 					if (response.success) {
-						self.applyResults(response.data);
+						self.applyRuleResults(response.data);
+					} else {
+						console.error('❌ Rule evaluation failed:', response.data);
 					}
 					self.hideLoading();
 				},
-				error: function() {
+				error: function(xhr, status, error) {
+					console.error('💥 AJAX error during rule evaluation:', xhr, status, error);
 					self.hideLoading();
 				}
 			});
 		},
 
 		/**
-		 * Apply results from condition evaluation
+		 * Apply results from rule evaluation
 		 */
-		applyResults: function(results) {
+		applyRuleResults: function(results) {
 			var self = this;
+			console.log('🎯 Applying rule results:', results);
 
-			$.each(results, function(addonName, result) {
-				var addon = self.getAddonByName(addonName);
-				if (!addon) return;
+			if (!results || !results.actions) {
+				console.log('⚠️ No actions to apply');
+				return;
+			}
 
-				// Apply visibility
-				if (result.hasOwnProperty('visible')) {
-					self.setAddonVisibility(addon, result.visible, result.animation);
-				}
-
-				// Apply requirement changes
-				if (result.hasOwnProperty('required')) {
-					self.setAddonRequired(addon, result.required);
-				}
-
-				// Apply price modifications
-				if (result.price_modifiers && result.price_modifiers.length > 0) {
-					self.applyPriceModifications(addon, result.price_modifiers);
-				}
-
-				// Apply option modifications
-				if (result.option_modifiers) {
-					self.applyOptionModifications(addon, result.option_modifiers);
-				}
-
-				// Apply other modifications
-				if (result.modifications) {
-					self.applyModifications(addon, result.modifications);
-				}
-
-				// Show messages
-				if (result.visibility_message) {
-					self.showMessage(addon, result.visibility_message);
+			// Apply each action
+			$.each(results.actions, function(index, action) {
+				console.log('🔧 Applying action:', action);
+				
+				switch(action.type) {
+					case 'show_addon':
+						self.handleAddonVisibility(action.target_addon, true, action);
+						break;
+					case 'hide_addon':
+						self.handleAddonVisibility(action.target_addon, false, action);
+						break;
+					case 'show_option':
+						self.handleOptionVisibility(action.target_addon, action.target_option, true, action);
+						break;
+					case 'hide_option':
+						self.handleOptionVisibility(action.target_addon, action.target_option, false, action);
+						break;
+					case 'set_price':
+						self.handlePriceChange(action.target_addon, action.target_option, action.new_price, action);
+						break;
+					case 'adjust_price':
+						self.handlePriceAdjustment(action.target_addon, action.target_option, action.adjustment, action);
+						break;
+					case 'make_required':
+						self.handleRequirementChange(action.target_addon, true, action);
+						break;
+					case 'make_optional':
+						self.handleRequirementChange(action.target_addon, false, action);
+						break;
+					case 'set_label':
+						self.handleLabelChange(action.target_addon, action.new_label, action);
+						break;
+					case 'set_description':
+						self.handleDescriptionChange(action.target_addon, action.new_description, action);
+						break;
+					default:
+						console.warn('⚠️ Unknown action type:', action.type);
 				}
 			});
 
 			// Trigger update event
-			this.form.trigger('woocommerce-product-addons-conditions-applied', [results]);
+			this.form.trigger('woocommerce-product-addons-rules-applied', [results]);
+			console.log('✨ All rule actions applied');
+		},
+
+		/**
+		 * Handle addon visibility changes
+		 */
+		handleAddonVisibility: function(addonName, visible, action) {
+			console.log(visible ? '👁️ Showing addon:' : '🙈 Hiding addon:', addonName);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			this.setAddonVisibility(addon, visible);
+		},
+
+		/**
+		 * Handle option visibility changes
+		 */
+		handleOptionVisibility: function(addonName, optionValue, visible, action) {
+			console.log(visible ? '👁️ Showing option:' : '🙈 Hiding option:', addonName + ' -> ' + optionValue);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			if (visible) {
+				this.showOptions(addon, [optionValue]);
+			} else {
+				this.hideOptions(addon, [optionValue]);
+			}
+		},
+
+		/**
+		 * Handle price changes
+		 */
+		handlePriceChange: function(addonName, optionValue, newPrice, action) {
+			console.log('💰 Setting price for:', addonName + ' -> ' + optionValue + ' = ' + newPrice);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			// Find the specific option and update its price
+			var targetElements = [];
+			if (optionValue) {
+				targetElements = addon.find('option[value="' + optionValue + '"], input[value="' + optionValue + '"]');
+			} else {
+				targetElements = addon.find('option, input[type="radio"], input[type="checkbox"]');
+			}
+
+			targetElements.each(function() {
+				var element = $(this);
+				element.data('price', newPrice);
+				self.updatePriceDisplay(element, newPrice);
+			});
+		},
+
+		/**
+		 * Handle price adjustments
+		 */
+		handlePriceAdjustment: function(addonName, optionValue, adjustment, action) {
+			console.log('📈 Adjusting price for:', addonName + ' -> ' + optionValue, adjustment);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			// Apply price adjustment logic here
+			// This would implement the specific adjustment calculation
+		},
+
+		/**
+		 * Handle requirement changes
+		 */
+		handleRequirementChange: function(addonName, required, action) {
+			console.log(required ? '⚠️ Making required:' : '✅ Making optional:', addonName);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			this.setAddonRequired(addon, required);
+		},
+
+		/**
+		 * Handle label changes
+		 */
+		handleLabelChange: function(addonName, newLabel, action) {
+			console.log('🏷️ Changing label for:', addonName + ' -> ' + newLabel);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			addon.find('.addon-name, .addon-label').first().text(newLabel);
+		},
+
+		/**
+		 * Handle description changes
+		 */
+		handleDescriptionChange: function(addonName, newDescription, action) {
+			console.log('📝 Changing description for:', addonName + ' -> ' + newDescription);
+			
+			var addon = this.getAddonByName(addonName);
+			if (!addon || addon.length === 0) {
+				console.warn('⚠️ Addon not found:', addonName);
+				return;
+			}
+
+			var descElement = addon.find('.addon-description');
+			if (descElement.length === 0) {
+				addon.find('.addon-name').after('<div class="addon-description"></div>');
+				descElement = addon.find('.addon-description');
+			}
+			descElement.html(newDescription);
+		},
+
+		/**
+		 * Apply results from condition evaluation (legacy support)
+		 */
+		applyResults: function(results) {
+			console.log('📋 Applying legacy results format');
+			// Keep for backward compatibility
+			this.applyRuleResults(results);
 		},
 
 		/**

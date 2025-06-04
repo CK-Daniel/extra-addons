@@ -97,6 +97,8 @@ class WC_Product_Addons_Conditional_Logic {
 		// AJAX handlers
 		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
+		add_action( 'wp_ajax_wc_product_addons_evaluate_rules', array( $this, 'ajax_evaluate_rules' ) );
+		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_rules', array( $this, 'ajax_evaluate_rules' ) );
 		
 		// Admin hooks
 		if ( is_admin() ) {
@@ -474,6 +476,275 @@ class WC_Product_Addons_Conditional_Logic {
 		$results = $this->evaluate_cascading_conditions( $addon_data, $context );
 		
 		wp_send_json_success( $results );
+	}
+
+	/**
+	 * AJAX handler for evaluating database-stored rules
+	 */
+	public function ajax_evaluate_rules() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		$product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+		$addon_data = isset( $_POST['addon_data'] ) ? json_decode( stripslashes( $_POST['addon_data'] ), true ) : array();
+		$selections = isset( $_POST['selections'] ) ? json_decode( stripslashes( $_POST['selections'] ), true ) : array();
+		$user_data = isset( $_POST['user_data'] ) ? json_decode( stripslashes( $_POST['user_data'] ), true ) : array();
+		$cart_data = isset( $_POST['cart_data'] ) ? json_decode( stripslashes( $_POST['cart_data'] ), true ) : array();
+		
+		error_log( 'Rule evaluation started for product: ' . $product_id );
+		error_log( 'Addon data: ' . json_encode( $addon_data ) );
+		error_log( 'Selections: ' . json_encode( $selections ) );
+		
+		if ( ! $product_id ) {
+			wp_send_json_error( 'Invalid product ID' );
+		}
+		
+		// Load rules from database
+		$rules = $this->load_rules_for_product( $product_id );
+		error_log( 'Loaded rules: ' . json_encode( $rules ) );
+		
+		if ( empty( $rules ) ) {
+			wp_send_json_success( array( 'actions' => array(), 'message' => 'No rules found' ) );
+		}
+		
+		// Build evaluation context
+		$context = array(
+			'product_id' => $product_id,
+			'selections' => $selections,
+			'addon_data' => $addon_data,
+			'user_data' => $user_data,
+			'cart_data' => $cart_data,
+			'timestamp' => current_time( 'timestamp' ),
+		);
+		
+		// Evaluate rules and collect actions
+		$actions_to_apply = array();
+		
+		foreach ( $rules as $rule ) {
+			error_log( 'Evaluating rule: ' . $rule['name'] );
+			
+			$rule_conditions_met = $this->evaluate_rule_conditions( $rule['conditions'], $context );
+			error_log( 'Rule "' . $rule['name'] . '" conditions met: ' . ( $rule_conditions_met ? 'YES' : 'NO' ) );
+			
+			if ( $rule_conditions_met ) {
+				foreach ( $rule['actions'] as $action ) {
+					$processed_action = $this->process_rule_action( $action, $context );
+					if ( $processed_action ) {
+						$actions_to_apply[] = $processed_action;
+						error_log( 'Action to apply: ' . json_encode( $processed_action ) );
+					}
+				}
+			}
+		}
+		
+		$result = array(
+			'actions' => $actions_to_apply,
+			'rules_evaluated' => count( $rules ),
+			'actions_count' => count( $actions_to_apply ),
+			'context' => $context
+		);
+		
+		error_log( 'Final result: ' . json_encode( $result ) );
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Load active rules for a product
+	 */
+	private function load_rules_for_product( $product_id ) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'wc_product_addon_conditional_rules';
+		
+		// Load global rules and product-specific rules
+		$rules = $wpdb->get_results( $wpdb->prepare("
+			SELECT * FROM {$table_name} 
+			WHERE status = 'active' 
+			AND (
+				scope = 'global' 
+				OR (scope = 'product' AND FIND_IN_SET(%d, scope_targets))
+				OR (scope = 'category' AND EXISTS (
+					SELECT 1 FROM {$wpdb->term_relationships} tr
+					JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+					WHERE tr.object_id = %d 
+					AND tt.taxonomy = 'product_cat'
+					AND FIND_IN_SET(tt.term_id, scope_targets)
+				))
+			)
+			ORDER BY priority ASC
+		", $product_id, $product_id ), ARRAY_A );
+		
+		// Parse JSON fields
+		foreach ( $rules as &$rule ) {
+			$rule['conditions'] = json_decode( $rule['conditions'], true ) ?: array();
+			$rule['actions'] = json_decode( $rule['actions'], true ) ?: array();
+			$rule['scope_targets'] = $rule['scope_targets'] ? explode( ',', $rule['scope_targets'] ) : array();
+		}
+		
+		return $rules;
+	}
+
+	/**
+	 * Evaluate rule conditions
+	 */
+	private function evaluate_rule_conditions( $conditions, $context ) {
+		if ( empty( $conditions ) ) {
+			return true;
+		}
+		
+		foreach ( $conditions as $condition ) {
+			$condition_met = $this->evaluate_single_condition( $condition, $context );
+			error_log( 'Condition result: ' . json_encode( $condition ) . ' => ' . ( $condition_met ? 'TRUE' : 'FALSE' ) );
+			
+			// For now, use AND logic - all conditions must be met
+			if ( ! $condition_met ) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+
+	/**
+	 * Evaluate a single condition
+	 */
+	private function evaluate_single_condition( $condition, $context ) {
+		$type = $condition['type'] ?? '';
+		$config = $condition['config'] ?? array();
+		
+		switch ( $type ) {
+			case 'addon_selected':
+				return $this->evaluate_addon_selected_condition( $config, $context );
+			case 'addon_field':
+				return $this->evaluate_addon_field_condition( $config, $context );
+			case 'product_price':
+				return $this->evaluate_product_price_condition( $config, $context );
+			case 'user_logged_in':
+				return $this->evaluate_user_logged_in_condition( $config, $context );
+			default:
+				error_log( 'Unknown condition type: ' . $type );
+				return false;
+		}
+	}
+
+	/**
+	 * Evaluate addon selected condition
+	 */
+	private function evaluate_addon_selected_condition( $config, $context ) {
+		$addon_id = $config['condition_addon'] ?? '';
+		$option_value = $config['condition_option'] ?? '';
+		$state = $config['condition_state'] ?? 'selected';
+		
+		error_log( "Evaluating addon_selected: addon={$addon_id}, option={$option_value}, state={$state}" );
+		
+		$selections = $context['selections'] ?? array();
+		
+		// Find the addon selection by ID or name
+		$selected_value = null;
+		foreach ( $selections as $addon_name => $selection ) {
+			if ( $addon_name === $addon_id || strpos( $addon_id, $addon_name ) !== false ) {
+				$selected_value = $selection['value'] ?? null;
+				break;
+			}
+		}
+		
+		error_log( "Selected value for {$addon_id}: " . ( $selected_value ?? 'NULL' ) );
+		
+		$is_selected = ( $selected_value === $option_value );
+		
+		return ( $state === 'selected' ) ? $is_selected : ! $is_selected;
+	}
+
+	/**
+	 * Evaluate addon field condition
+	 */
+	private function evaluate_addon_field_condition( $config, $context ) {
+		// Implementation for field value conditions
+		return true; // Placeholder
+	}
+
+	/**
+	 * Evaluate product price condition
+	 */
+	private function evaluate_product_price_condition( $config, $context ) {
+		// Implementation for product price conditions
+		return true; // Placeholder
+	}
+
+	/**
+	 * Evaluate user logged in condition
+	 */
+	private function evaluate_user_logged_in_condition( $config, $context ) {
+		return is_user_logged_in();
+	}
+
+	/**
+	 * Process rule action for frontend application
+	 */
+	private function process_rule_action( $action, $context ) {
+		$type = $action['type'] ?? '';
+		$config = $action['config'] ?? array();
+		
+		$processed_action = array(
+			'type' => $type,
+			'original_config' => $config
+		);
+		
+		switch ( $type ) {
+			case 'hide_addon':
+			case 'show_addon':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				break;
+				
+			case 'hide_option':
+			case 'show_option':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				$processed_action['target_option'] = $config['action_option'] ?? '';
+				break;
+				
+			case 'set_price':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				$processed_action['target_option'] = $config['action_option'] ?? '';
+				$processed_action['new_price'] = floatval( $config['action_price'] ?? 0 );
+				break;
+				
+			case 'make_required':
+			case 'make_optional':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				break;
+				
+			case 'set_label':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				$processed_action['new_label'] = $config['action_label'] ?? '';
+				break;
+				
+			case 'set_description':
+				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				$processed_action['new_description'] = $config['action_description'] ?? '';
+				break;
+				
+			default:
+				error_log( 'Unknown action type: ' . $type );
+				return null;
+		}
+		
+		return $processed_action;
+	}
+
+	/**
+	 * Resolve addon target from ID to name
+	 */
+	private function resolve_addon_target( $addon_id, $context ) {
+		// For now, extract the addon name from the ID format
+		// ID format is usually like "addon_name_global_123" or just "addon_name"
+		if ( strpos( $addon_id, '_global_' ) !== false ) {
+			$parts = explode( '_global_', $addon_id );
+			return $parts[0];
+		} elseif ( strpos( $addon_id, '_product_' ) !== false ) {
+			$parts = explode( '_product_', $addon_id );
+			return $parts[0];
+		}
+		
+		return $addon_id;
 	}
 
 	/**
