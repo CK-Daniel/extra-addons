@@ -19,19 +19,38 @@
 		 * Initialize
 		 */
 		init: function() {
+			console.log('🔧 Initializing WC Product Addons Conditional Logic...');
+			
 			this.form = $('form.cart');
-			this.addons = $('.product-addon');
+			this.addons = $('.product-addon, .wc-pao-addon');
 			this.cache = {};
 			this.debounceTimer = null;
 			this.evaluationQueue = [];
 			
+			console.log('🔍 Found elements:');
+			console.log('  - Cart form:', this.form.length);
+			console.log('  - Product addons:', this.addons.length);
+			
+			// Try alternative selectors if standard ones don't work
+			if (this.addons.length === 0) {
+				console.log('🔍 Trying alternative addon selectors...');
+				this.addons = $('.addon, .product-addon-field, .form-row');
+				console.log('  - Alternative addons found:', this.addons.length);
+			}
+			
 			if (this.form.length === 0 || this.addons.length === 0) {
+				console.warn('⚠️ Missing required elements - conditional logic disabled');
 				return;
 			}
 
+			console.log('✅ Required elements found, proceeding with initialization...');
 			this.bindEvents();
 			this.initializeState();
-			this.evaluateAllConditions();
+			
+			// Wait a bit for DOM to be fully ready, then evaluate
+			setTimeout(() => {
+				this.evaluateAllConditions();
+			}, 100);
 		},
 
 		/**
@@ -80,16 +99,25 @@
 
 			// Store original addon data
 			this.originalAddons = {};
+			console.log('📝 Cataloging addons...');
 			this.addons.each(function() {
 				var addon = $(this);
-				var name = addon.data('addon-name') || addon.find('.addon-name').text();
-				this.originalAddons[name] = {
-					element: addon,
-					data: addon.data(),
-					required: addon.find('input, select, textarea').prop('required'),
-					prices: this.extractPrices(addon)
-				};
+				var name = addon.data('addon-name') || addon.find('.addon-name').text().trim() || addon.find('label').first().text().trim();
+				
+				if (name) {
+					console.log('  - Found addon:', name);
+					this.originalAddons[name] = {
+						element: addon,
+						data: addon.data(),
+						required: addon.find('input, select, textarea').prop('required'),
+						prices: this.extractPrices(addon)
+					};
+				} else {
+					console.warn('  - Addon found but no name detected:', addon);
+				}
 			}.bind(this));
+			
+			console.log('📋 Total addons cataloged:', Object.keys(this.originalAddons).length);
 		},
 
 		/**
@@ -866,9 +894,64 @@
 		}
 	};
 
-	// Initialize on document ready
-	$(document).ready(function() {
+	// Try multiple initialization methods to ensure it works
+	function initializeConditionalLogic() {
+		console.log('🚀 WC Product Addons Conditional Logic script loaded');
+		console.log('Available parameters:', window.wc_product_addons_conditional_logic);
+		
+		// Check if we have the necessary elements
+		var $form = $('form.cart');
+		var $addons = $('.product-addon, .wc-pao-addon, .addon, .product-addon-field');
+		
+		console.log('Form found:', $form.length > 0);
+		console.log('Addons found:', $addons.length);
+		console.log('Current URL:', window.location.href);
+		console.log('Page type checks:', {
+			hasCartForm: $form.length > 0,
+			hasAddons: $addons.length > 0,
+			hasWooCommerce: typeof woocommerce_params !== 'undefined',
+			hasJQuery: typeof jQuery !== 'undefined'
+		});
+		
+		if ($form.length === 0) {
+			console.warn('⚠️ No cart form found - conditional logic will not work');
+			return false;
+		}
+		
+		if ($addons.length === 0) {
+			console.warn('⚠️ No product addons found - conditional logic will not work');
+			console.log('🔍 Checking DOM for any addon-like elements...');
+			console.log('All form elements:', $('form.cart').find('input, select, textarea').length);
+			return false;
+		}
+		
+		console.log('✅ Initializing conditional logic...');
 		WC_Product_Addons_Conditional_Logic.init();
+		return true;
+	}
+
+	// Try on document ready
+	$(document).ready(function() {
+		console.log('📄 Document ready - attempting initialization...');
+		if (!initializeConditionalLogic()) {
+			// If initialization failed, try again after a delay
+			console.log('⏰ Retrying initialization in 500ms...');
+			setTimeout(function() {
+				initializeConditionalLogic();
+			}, 500);
+		}
 	});
+
+	// Also try when window is fully loaded
+	$(window).on('load', function() {
+		console.log('🌐 Window loaded - checking if conditional logic is initialized...');
+		if (!WC_Product_Addons_Conditional_Logic.form || WC_Product_Addons_Conditional_Logic.form.length === 0) {
+			console.log('⏰ Retrying initialization after window load...');
+			initializeConditionalLogic();
+		}
+	});
+
+	// Export for global access
+	window.WC_Product_Addons_Conditional_Logic = WC_Product_Addons_Conditional_Logic;
 
 })(jQuery);

@@ -983,11 +983,19 @@ class WC_Product_Addons_Conditional_Logic {
 	 * Enqueue frontend scripts
 	 */
 	public function enqueue_frontend_scripts() {
-		if ( is_product() || is_shop() ) {
+		// Only load on product pages or where addons might be displayed
+		if ( is_product() || is_shop() || is_cart() ) {
+			
+			// Check if the main addons script is registered/enqueued
+			$dependencies = array( 'jquery' );
+			if ( wp_script_is( 'woocommerce-addons-extra-digital', 'registered' ) ) {
+				$dependencies[] = 'woocommerce-addons-extra-digital';
+			}
+			
 			wp_enqueue_script(
 				'wc-product-addons-conditional-logic',
 				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/js/conditional-logic.js',
-				array( 'jquery', 'woocommerce-addons-extra-digital' ),
+				$dependencies,
 				WC_PRODUCT_ADDONS_VERSION,
 				true
 			);
@@ -995,7 +1003,16 @@ class WC_Product_Addons_Conditional_Logic {
 			wp_localize_script( 'wc-product-addons-conditional-logic', 'wc_product_addons_conditional_logic', array(
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'wc-product-addons-conditional-logic' ),
+				'debug'    => defined( 'WP_DEBUG' ) && WP_DEBUG,
 			) );
+			
+			// Also check if we need to trigger the main addon scripts
+			if ( ! wp_script_is( 'woocommerce-addons-extra-digital', 'enqueued' ) && class_exists( 'WC_Product_Addons_Display' ) ) {
+				$display = $GLOBALS['Product_Addon_Display'] ?? new WC_Product_Addons_Display();
+				if ( method_exists( $display, 'addon_scripts' ) ) {
+					$display->addon_scripts();
+				}
+			}
 		}
 	}
 }
