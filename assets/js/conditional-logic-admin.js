@@ -137,25 +137,40 @@
             // Rule actions
             $(document).on('click', '.edit-rule', function(e) {
                 e.preventDefault();
+                console.log('Edit rule clicked');
                 var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.editRule(ruleId);
+                console.log('Rule ID:', ruleId);
+                if (ruleId) {
+                    self.editRule(ruleId);
+                }
             });
             
             $(document).on('click', '.duplicate-rule', function(e) {
                 e.preventDefault();
+                console.log('Duplicate rule clicked');
                 var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.duplicateRule(ruleId);
+                console.log('Rule ID:', ruleId);
+                if (ruleId) {
+                    self.duplicateRule(ruleId);
+                }
             });
             
             $(document).on('click', '.toggle-rule', function(e) {
                 e.preventDefault();
+                console.log('Toggle rule clicked');
                 var ruleId = $(this).closest('.rule-item').data('rule-id');
-                self.toggleRule(ruleId);
+                console.log('Rule ID:', ruleId);
+                if (ruleId) {
+                    self.toggleRule(ruleId);
+                }
             });
             
             $(document).on('click', '.delete-rule', function(e) {
                 e.preventDefault();
-                if (confirm(wc_product_addons_params.i18n_confirm_delete_rule)) {
+                var confirmMessage = (typeof wc_product_addons_params !== 'undefined' && wc_product_addons_params.i18n_confirm_delete_rule) 
+                    ? wc_product_addons_params.i18n_confirm_delete_rule 
+                    : 'Are you sure you want to delete this rule?';
+                if (confirm(confirmMessage)) {
                     var ruleId = $(this).closest('.rule-item').data('rule-id');
                     self.deleteRule(ruleId);
                 }
@@ -1134,7 +1149,15 @@
         
         // Edit rule
         editRule: function(ruleId) {
+            console.log('editRule called with ID:', ruleId);
             var self = this;
+            
+            // Check if wc_product_addons_params is available
+            if (typeof wc_product_addons_params === 'undefined') {
+                console.error('wc_product_addons_params is not defined');
+                alert('Error: WordPress admin parameters not loaded. Please refresh the page.');
+                return;
+            }
             
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
@@ -1145,13 +1168,25 @@
                     rule_id: ruleId
                 },
                 success: function(response) {
+                    console.log('Edit rule response:', response);
                     if (response.success) {
                         self.populateRuleBuilder(response.data);
                         self.editingRuleId = ruleId;
+                        
+                        // Switch to the create rule tab
+                        $('.nav-tab[href="#create-rule"]').click();
+                        
                         $('html, body').animate({
                             scrollTop: $('.rule-builder').offset().top - 50
                         }, 500);
+                    } else {
+                        console.error('Edit rule failed:', response);
+                        alert('Error loading rule: ' + (response.data || 'Unknown error'));
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error editing rule:', xhr, status, error);
+                    alert('Error loading rule: ' + error);
                 }
             });
         },
@@ -1227,7 +1262,15 @@
         
         // Duplicate rule
         duplicateRule: function(ruleId) {
+            console.log('duplicateRule called with ID:', ruleId);
             var self = this;
+            
+            // Check if wc_product_addons_params is available
+            if (typeof wc_product_addons_params === 'undefined') {
+                console.error('wc_product_addons_params is not defined');
+                alert('Error: WordPress admin parameters not loaded. Please refresh the page.');
+                return;
+            }
             
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
@@ -1238,18 +1281,37 @@
                     rule_id: ruleId
                 },
                 success: function(response) {
+                    console.log('Duplicate rule response:', response);
                     if (response.success) {
-                        self.showNotice(wc_product_addons_params.i18n_rule_duplicated, 'success');
+                        var successMessage = (wc_product_addons_params.i18n_rule_duplicated) 
+                            ? wc_product_addons_params.i18n_rule_duplicated 
+                            : 'Rule duplicated successfully';
+                        self.showNotice(successMessage, 'success');
                         self.loadExistingRules();
+                    } else {
+                        console.error('Duplicate rule failed:', response);
+                        alert('Error duplicating rule: ' + (response.data || 'Unknown error'));
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error duplicating rule:', xhr, status, error);
+                    alert('Error duplicating rule: ' + error);
                 }
             });
         },
         
         // Toggle rule
         toggleRule: function(ruleId) {
+            console.log('toggleRule called with ID:', ruleId);
             var self = this;
             var $rule = $('.rule-item[data-rule-id="' + ruleId + '"]');
+            
+            // Check if wc_product_addons_params is available
+            if (typeof wc_product_addons_params === 'undefined') {
+                console.error('wc_product_addons_params is not defined');
+                alert('Error: WordPress admin parameters not loaded. Please refresh the page.');
+                return;
+            }
             
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
@@ -1260,23 +1322,41 @@
                     rule_id: ruleId
                 },
                 success: function(response) {
+                    console.log('Toggle rule response:', response);
                     if (response.success) {
                         // Update UI
                         if (response.data.status === 'active') {
-                            $rule.find('.rule-status').removeClass('inactive').addClass('active').text(wc_product_addons_params.i18n_active);
+                            var activeText = (wc_product_addons_params.i18n_active) ? wc_product_addons_params.i18n_active : 'Active';
+                            $rule.find('.rule-status').removeClass('inactive').addClass('active').text(activeText);
                             $rule.find('.toggle-rule .dashicons').removeClass('dashicons-hidden').addClass('dashicons-visibility');
                         } else {
-                            $rule.find('.rule-status').removeClass('active').addClass('inactive').text(wc_product_addons_params.i18n_inactive);
+                            var inactiveText = (wc_product_addons_params.i18n_inactive) ? wc_product_addons_params.i18n_inactive : 'Inactive';
+                            $rule.find('.rule-status').removeClass('active').addClass('inactive').text(inactiveText);
                             $rule.find('.toggle-rule .dashicons').removeClass('dashicons-visibility').addClass('dashicons-hidden');
                         }
+                    } else {
+                        console.error('Toggle rule failed:', response);
+                        alert('Error toggling rule: ' + (response.data || 'Unknown error'));
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error toggling rule:', xhr, status, error);
+                    alert('Error toggling rule: ' + error);
                 }
             });
         },
         
         // Delete rule
         deleteRule: function(ruleId) {
+            console.log('deleteRule called with ID:', ruleId);
             var self = this;
+            
+            // Check if wc_product_addons_params is available
+            if (typeof wc_product_addons_params === 'undefined') {
+                console.error('wc_product_addons_params is not defined');
+                alert('Error: WordPress admin parameters not loaded. Please refresh the page.');
+                return;
+            }
             
             $.ajax({
                 url: wc_product_addons_params.ajax_url,
@@ -1287,15 +1367,29 @@
                     rule_id: ruleId
                 },
                 success: function(response) {
+                    console.log('Delete rule response:', response);
                     if (response.success) {
-                        self.showNotice(wc_product_addons_params.i18n_rule_deleted, 'success');
+                        var successMessage = (wc_product_addons_params.i18n_rule_deleted) 
+                            ? wc_product_addons_params.i18n_rule_deleted 
+                            : 'Rule deleted successfully';
+                        self.showNotice(successMessage, 'success');
                         $('.rule-item[data-rule-id="' + ruleId + '"]').fadeOut(300, function() {
                             $(this).remove();
                             if ($('.rule-item').length === 0) {
-                                $('#rules-list').html('<div class="no-rules-message"><p>' + wc_product_addons_params.i18n_no_rules + '</p></div>');
+                                var noRulesMessage = (wc_product_addons_params.i18n_no_rules) 
+                                    ? wc_product_addons_params.i18n_no_rules 
+                                    : 'No rules found';
+                                $('#rules-list').html('<div class="no-rules-message"><p>' + noRulesMessage + '</p></div>');
                             }
                         });
+                    } else {
+                        console.error('Delete rule failed:', response);
+                        alert('Error deleting rule: ' + (response.data || 'Unknown error'));
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error deleting rule:', xhr, status, error);
+                    alert('Error deleting rule: ' + error);
                 }
             });
         },
