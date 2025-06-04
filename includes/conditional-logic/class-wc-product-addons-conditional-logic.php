@@ -1136,30 +1136,71 @@ class WC_Product_Addons_Conditional_Logic {
 		// Set proper headers
 		header( 'Content-Type: application/json' );
 		
-		$response = array(
-			'success' => true,
-			'data' => array(
-				'debug' => 'Get addons handler reached successfully!',
-				'user_id' => get_current_user_id(),
-				'can_manage_woo' => current_user_can( 'manage_woocommerce' ),
-				'post_data' => $_POST,
-				'sample_addons' => array(
-					'global' => array(
-						'label' => 'Global Add-ons',
-						'addons' => array(
-							array(
-								'id' => 'test_addon_1',
-								'name' => 'Test Addon 1',
-								'type' => 'select'
-							)
-						)
+		// Check nonce for security
+		if ( ! check_ajax_referer( 'wc_pao_conditional_logic', 'security', false ) ) {
+			wp_send_json_error( 'Invalid security token' );
+		}
+		
+		// Check permissions
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$context = isset( $_POST['context'] ) ? sanitize_text_field( $_POST['context'] ) : 'all';
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		
+		$response_data = array();
+		
+		// Get global addons
+		if ( $context === 'all' || $context === 'global_only' ) {
+			$global_addons = $this->get_global_addons();
+			if ( ! empty( $global_addons ) ) {
+				$response_data['global'] = array(
+					'label' => __( 'Global Add-ons', 'woocommerce-product-addons-extra-digital' ),
+					'addons' => $global_addons
+				);
+			}
+		}
+		
+		// Get product-specific addons
+		if ( ( $context === 'all' || $context === 'specific_product' ) && $product_id ) {
+			$product_addons = $this->get_product_addons( $product_id );
+			if ( ! empty( $product_addons ) ) {
+				$product = wc_get_product( $product_id );
+				$product_name = $product ? $product->get_name() : __( 'Product', 'woocommerce-product-addons-extra-digital' );
+				$response_data['product_' . $product_id] = array(
+					'label' => sprintf( __( '%s Add-ons', 'woocommerce-product-addons-extra-digital' ), $product_name ),
+					'addons' => $product_addons
+				);
+			}
+		}
+		
+		// If context is 'all' and no specific product, get addons from all products
+		if ( $context === 'all' && ! $product_id ) {
+			// Get a sample of products with addons
+			$products_with_addons = get_posts( array(
+				'post_type' => 'product',
+				'posts_per_page' => 50,
+				'meta_query' => array(
+					array(
+						'key' => '_product_addons',
+						'compare' => 'EXISTS'
 					)
 				)
-			)
-		);
+			) );
+			
+			foreach ( $products_with_addons as $product_post ) {
+				$product_addons = $this->get_product_addons( $product_post->ID );
+				if ( ! empty( $product_addons ) ) {
+					$response_data['product_' . $product_post->ID] = array(
+						'label' => sprintf( __( '%s Add-ons', 'woocommerce-product-addons-extra-digital' ), $product_post->post_title ),
+						'addons' => $product_addons
+					);
+				}
+			}
+		}
 		
-		echo json_encode( $response );
-		wp_die();
+		wp_send_json_success( $response_data );
 	}
 	
 	/**
@@ -1169,28 +1210,26 @@ class WC_Product_Addons_Conditional_Logic {
 		// Set proper headers
 		header( 'Content-Type: application/json' );
 		
-		$response = array(
-			'success' => true,
-			'data' => array(
-				'debug' => 'Get addon options handler reached successfully!',
-				'user_id' => get_current_user_id(),
-				'can_manage_woo' => current_user_can( 'manage_woocommerce' ),
-				'post_data' => $_POST,
-				'sample_options' => array(
-					array(
-						'value' => 'option_1',
-						'label' => 'Option 1'
-					),
-					array(
-						'value' => 'option_2',
-						'label' => 'Option 2'
-					)
-				)
-			)
-		);
+		// Check nonce for security
+		if ( ! check_ajax_referer( 'wc_pao_conditional_logic', 'security', false ) ) {
+			wp_send_json_error( 'Invalid security token' );
+		}
 		
-		echo json_encode( $response );
-		wp_die();
+		// Check permissions
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+		
+		$addon_id = isset( $_POST['addon_id'] ) ? sanitize_text_field( $_POST['addon_id'] ) : '';
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		
+		if ( empty( $addon_id ) ) {
+			wp_send_json_error( 'No addon ID provided' );
+		}
+		
+		$options = $this->get_addon_options_by_id( $addon_id, $product_id );
+		
+		wp_send_json_success( $options );
 	}
 	
 	/**
@@ -1218,7 +1257,7 @@ class WC_Product_Addons_Conditional_Logic {
 						$addons[] = array(
 							'id' => 'global_' . $group->ID . '_' . sanitize_title( $addon['name'] ),
 							'name' => $addon['name'],
-							'type' => $addon['type'],
+							'type' => isset( $addon['type'] ) ? $addon['type'] : 'text',
 							'group_id' => $group->ID,
 							'group_name' => $group->post_title
 						);
@@ -1248,7 +1287,7 @@ class WC_Product_Addons_Conditional_Logic {
 					$addons[] = array(
 						'id' => 'product_' . $product_id . '_' . sanitize_title( $addon['name'] ),
 						'name' => $addon['name'],
-						'type' => $addon['type'],
+						'type' => isset( $addon['type'] ) ? $addon['type'] : 'text',
 						'product_id' => $product_id
 					);
 				}

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test AJAX Get Addons</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Test AJAX Get Addons</h1>
+    
+    <div>
+        <h2>Test Get Addons</h2>
+        <label>Context:</label>
+        <select id="context">
+            <option value="all">All</option>
+            <option value="global_only">Global Only</option>
+            <option value="specific_product">Specific Product</option>
+        </select>
+        
+        <label>Product ID (for specific product):</label>
+        <input type="number" id="product_id" value="0">
+        
+        <button id="test-get-addons">Test Get Addons</button>
+        
+        <div id="addons-result" style="border: 1px solid #ccc; padding: 10px; margin-top: 10px; min-height: 100px;">
+            <pre>Results will appear here...</pre>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Test Get Addon Options</h2>
+        <label>Addon ID:</label>
+        <input type="text" id="addon_id" placeholder="e.g., global_123_addon-name">
+        
+        <button id="test-get-options">Test Get Options</button>
+        
+        <div id="options-result" style="border: 1px solid #ccc; padding: 10px; margin-top: 10px; min-height: 100px;">
+            <pre>Results will appear here...</pre>
+        </div>
+    </div>
+    
+    <script>
+    jQuery(document).ready(function($) {
+        // Configuration - Update these to match your WordPress setup
+        var ajaxUrl = '/wp-admin/admin-ajax.php'; // Update this path if needed
+        var nonce = 'test-nonce'; // This will need to be a valid nonce in production
+        
+        $('#test-get-addons').click(function() {
+            var context = $('#context').val();
+            var product_id = $('#product_id').val();
+            
+            $('#addons-result pre').text('Loading...');
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_get_addons',
+                    context: context,
+                    product_id: product_id,
+                    security: nonce
+                },
+                success: function(response) {
+                    $('#addons-result pre').text(JSON.stringify(response, null, 2));
+                },
+                error: function(xhr, status, error) {
+                    $('#addons-result pre').text('Error: ' + error + '\nStatus: ' + status + '\nResponse: ' + xhr.responseText);
+                }
+            });
+        });
+        
+        $('#test-get-options').click(function() {
+            var addon_id = $('#addon_id').val();
+            
+            $('#options-result pre').text('Loading...');
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'wc_pao_get_addon_options',
+                    addon_id: addon_id,
+                    product_id: $('#product_id').val(),
+                    security: nonce
+                },
+                success: function(response) {
+                    $('#options-result pre').text(JSON.stringify(response, null, 2));
+                },
+                error: function(xhr, status, error) {
+                    $('#options-result pre').text('Error: ' + error + '\nStatus: ' + status + '\nResponse: ' + xhr.responseText);
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>
