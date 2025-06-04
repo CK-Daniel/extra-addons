@@ -533,6 +533,21 @@
             
             // Populate the addon select with current addon data
             this.updateAddonSelects();
+            
+            // Handle option select visibility based on action type
+            var actionType = $select.val();
+            $config.find('.option-select').each(function() {
+                var $optionSelect = $(this);
+                var $addonSelect = $optionSelect.siblings('.addon-select');
+                
+                // For option-specific actions, show the option select even without addon selection
+                if (actionType === 'show_option' || actionType === 'hide_option') {
+                    $optionSelect.show();
+                } else if (!$addonSelect.val()) {
+                    // For other actions, only show if addon is selected
+                    $optionSelect.hide();
+                }
+            });
         },
         
         // Condition configuration templates
@@ -636,7 +651,7 @@
             html += '</select>';
             
             if (includeOptions) {
-                html += '<select class="option-select" name="action_option" style="display:none;">';
+                html += '<select class="option-select" name="action_option" style="display: none;">';
                 html += '<option value="">' + wc_product_addons_params.i18n_select_option + '</option>';
                 html += '</select>';
             }
@@ -650,7 +665,10 @@
         },
         
         getOptionVisibilityActionConfig: function() {
-            return this.buildAddonSelectHtml(true);
+            var html = this.buildAddonSelectHtml(true, false);
+            // Force the option select to be visible for option-specific actions
+            html = html.replace('style="display:none;"', 'style=""');
+            return html;
         },
         
         getSetPriceActionConfig: function() {
@@ -708,7 +726,8 @@
         // Update addon options when an addon is selected
         updateAddonOptions: function($select) {
             var addonId = $select.val();
-            var $optionSelect = $select.siblings('.option-select');
+            var $container = $select.closest('.action-config, .condition-config');
+            var $optionSelect = $container.find('.option-select');
             
             if (!$optionSelect.length) {
                 return;
@@ -724,9 +743,23 @@
                     $optionSelect.append('<option value="' + option.value + '">' + option.label + '</option>');
                 });
                 
-                $optionSelect.show();
+                // Check if this is for an action that should show options, or if target level is set to "option"
+                var $targetLevel = $container.find('.target-level');
+                var $actionType = $container.closest('.action-item').find('.action-type');
+                var actionType = $actionType.length ? $actionType.val() : '';
+                
+                if (actionType === 'show_option' || actionType === 'hide_option' || 
+                    ($targetLevel.length && $targetLevel.val() === 'option')) {
+                    $optionSelect.show();
+                }
             } else {
-                $optionSelect.hide();
+                // Only hide if not a required option selection
+                var $actionType = $container.closest('.action-item').find('.action-type');
+                var actionType = $actionType.length ? $actionType.val() : '';
+                
+                if (actionType !== 'show_option' && actionType !== 'hide_option') {
+                    $optionSelect.hide();
+                }
             }
         },
         
