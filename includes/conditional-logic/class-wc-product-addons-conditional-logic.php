@@ -554,21 +554,21 @@ class WC_Product_Addons_Conditional_Logic {
 	private function load_rules_for_product( $product_id ) {
 		global $wpdb;
 		
-		$table_name = $wpdb->prefix . 'wc_product_addon_conditional_rules';
+		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
 		
 		// Load global rules and product-specific rules
 		$rules = $wpdb->get_results( $wpdb->prepare("
-			SELECT * FROM {$table_name} 
-			WHERE status = 'active' 
+			SELECT *, rule_name as name FROM {$table_name} 
+			WHERE enabled = 1 
 			AND (
-				scope = 'global' 
-				OR (scope = 'product' AND FIND_IN_SET(%d, scope_targets))
-				OR (scope = 'category' AND EXISTS (
+				rule_type = 'global' 
+				OR (rule_type = 'product' AND scope_id = %d)
+				OR (rule_type = 'category' AND EXISTS (
 					SELECT 1 FROM {$wpdb->term_relationships} tr
 					JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
 					WHERE tr.object_id = %d 
 					AND tt.taxonomy = 'product_cat'
-					AND FIND_IN_SET(tt.term_id, scope_targets)
+					AND tt.term_id = scope_id
 				))
 			)
 			ORDER BY priority ASC
@@ -578,7 +578,6 @@ class WC_Product_Addons_Conditional_Logic {
 		foreach ( $rules as &$rule ) {
 			$rule['conditions'] = json_decode( $rule['conditions'], true ) ?: array();
 			$rule['actions'] = json_decode( $rule['actions'], true ) ?: array();
-			$rule['scope_targets'] = $rule['scope_targets'] ? explode( ',', $rule['scope_targets'] ) : array();
 		}
 		
 		return $rules;
@@ -790,14 +789,14 @@ class WC_Product_Addons_Conditional_Logic {
 	private function addon_has_conditional_rules( $addon_key, $product_id ) {
 		global $wpdb;
 		
-		$table_name = $wpdb->prefix . 'wc_product_addon_conditional_rules';
+		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
 		
 		$count = $wpdb->get_var( $wpdb->prepare("
 			SELECT COUNT(*) FROM {$table_name} 
-			WHERE status = 'active' 
+			WHERE enabled = 1 
 			AND (
-				scope = 'global' 
-				OR (scope = 'product' AND FIND_IN_SET(%d, scope_targets))
+				rule_type = 'global' 
+				OR (rule_type = 'product' AND scope_id = %d)
 			)
 			AND (actions LIKE %s OR actions LIKE %s)
 		", $product_id, '%' . $addon_key . '%', '%' . explode('_', $addon_key)[0] . '%' ) );

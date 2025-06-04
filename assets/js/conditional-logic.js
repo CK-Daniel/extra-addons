@@ -115,7 +115,10 @@
 				
 				// Method 2: Check data-addon-name on label inside
 				if (!name) {
-					name = addon.find('label[data-addon-name]').data('addon-name');
+					var label = addon.find('label[data-addon-name]');
+					if (label.length) {
+						name = label.data('addon-name');
+					}
 				}
 				
 				// Method 3: Check wc-pao-addon-name class text
@@ -123,7 +126,7 @@
 					var labelText = addon.find('.wc-pao-addon-name').text();
 					if (labelText) {
 						// Clean up the label text (remove required asterisk, etc.)
-						name = labelText.replace(/\s*\*\s*$/, '').replace(/\s+$/, '').trim();
+						name = labelText.replace(/\s*\*\s*$/, '').replace(/\([^)]*\)$/, '').replace(/\s+$/, '').trim();
 					}
 				}
 				
