@@ -46,6 +46,7 @@ class WC_Product_Addons_Admin {
 		add_action( 'wp_ajax_wc_product_addons_duplicate_rule', array( $this, 'ajax_duplicate_rule' ) );
 		add_action( 'wp_ajax_wc_product_addons_get_all_addons', array( $this, 'ajax_get_all_addons' ) );
 		add_action( 'wp_ajax_wc_product_addons_search_categories', array( $this, 'ajax_search_categories' ) );
+		add_action( 'wp_ajax_wc_product_addons_search_products', array( $this, 'ajax_search_products' ) );
 		add_action( 'wp_ajax_wc_product_addons_update_rule_priorities', array( $this, 'ajax_update_rule_priorities' ) );
 	}
 
@@ -1750,7 +1751,7 @@ class WC_Product_Addons_Admin {
 	 * AJAX: Search categories
 	 */
 	public function ajax_search_categories() {
-		check_ajax_referer( 'wc_pao_conditional_logic', 'security' );
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
 		
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_die( -1 );
@@ -1767,11 +1768,50 @@ class WC_Product_Addons_Admin {
 		
 		$results = array();
 		
-		foreach ( $categories as $category ) {
-			$results[] = array(
-				'id' => $category->term_id,
-				'text' => $category->name
-			);
+		if ( ! is_wp_error( $categories ) ) {
+			foreach ( $categories as $category ) {
+				$results[] = array(
+					'id' => $category->term_id,
+					'text' => $category->name . ' (' . $category->count . ' products)'
+				);
+			}
+		}
+		
+		wp_send_json( $results );
+	}
+	
+	/**
+	 * AJAX: Search products
+	 */
+	public function ajax_search_products() {
+		check_ajax_referer( 'wc-product-addons-conditional-logic', 'security' );
+		
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( -1 );
+		}
+		
+		$term = isset( $_GET['term'] ) ? sanitize_text_field( $_GET['term'] ) : '';
+		
+		$args = array(
+			'post_type' => 'product',
+			'post_status' => 'publish',
+			's' => $term,
+			'posts_per_page' => 20,
+			'orderby' => 'title',
+			'order' => 'ASC'
+		);
+		
+		$products = get_posts( $args );
+		$results = array();
+		
+		foreach ( $products as $product_post ) {
+			$product = wc_get_product( $product_post->ID );
+			if ( $product ) {
+				$results[] = array(
+					'id' => $product->get_id(),
+					'text' => $product->get_name() . ' (#' . $product->get_id() . ')'
+				);
+			}
 		}
 		
 		wp_send_json( $results );

@@ -182,13 +182,13 @@
             // Category search
             $('.wc-category-search').select2({
                 ajax: {
-                    url: wc_product_addons_params.ajax_url,
+                    url: wc_product_addons_conditional_logic.ajax_url || wc_product_addons_params.ajax_url,
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
                         return {
                             action: 'wc_product_addons_search_categories',
-                            security: wc_product_addons_params.search_categories_nonce,
+                            security: wc_product_addons_conditional_logic.nonce || wc_product_addons_params.nonce,
                             term: params.term
                         };
                     },
@@ -199,38 +199,36 @@
                     },
                     cache: true
                 },
-                minimumInputLength: 2
+                minimumInputLength: 2,
+                placeholder: 'Search for categories...',
+                allowClear: true,
+                width: '100%'
             });
             
             // Product search
             $('.wc-product-search').select2({
                 ajax: {
-                    url: wc_product_addons_params.ajax_url,
+                    url: wc_product_addons_conditional_logic.ajax_url || wc_product_addons_params.ajax_url,
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
                         return {
-                            action: 'woocommerce_json_search_products',
-                            security: wc_product_addons_params.search_products_nonce,
-                            term: params.term,
-                            exclude_type: 'variable'
+                            action: 'wc_product_addons_search_products',
+                            security: wc_product_addons_conditional_logic.nonce || wc_product_addons_params.nonce,
+                            term: params.term
                         };
                     },
                     processResults: function(data) {
-                        var results = [];
-                        $.each(data, function(id, text) {
-                            results.push({
-                                id: id,
-                                text: text
-                            });
-                        });
                         return {
-                            results: results
+                            results: data
                         };
                     },
                     cache: true
                 },
-                minimumInputLength: 3
+                minimumInputLength: 2,
+                placeholder: 'Search for products...',
+                allowClear: true,
+                width: '100%'
             });
             
             // Product search for context
