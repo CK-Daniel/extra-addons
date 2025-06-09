@@ -147,6 +147,10 @@ class WC_Product_Addons_Conditional_Logic {
 		// Hook into price calculations
 		add_filter( 'woocommerce_product_addons_price', array( $this, 'modify_addon_price' ), 10, 4 );
 		
+		// Hook into cart price calculations
+		add_filter( 'woocommerce_product_addons_option_price_raw', array( $this, 'modify_addon_price_raw' ), 10, 2 );
+		add_filter( 'woocommerce_product_addons_adjust_price', array( $this, 'should_adjust_cart_price' ), 10, 2 );
+		
 		// AJAX handlers
 		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
@@ -861,6 +865,7 @@ class WC_Product_Addons_Conditional_Logic {
 				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
 				$processed_action['target_option'] = $config['action_option'] ?? '';
 				$processed_action['new_price'] = floatval( $config['action_price'] ?? 0 );
+				error_log( "Set price action: addon={$processed_action['target_addon']}, option={$processed_action['target_option']}, price={$processed_action['new_price']}" );
 				break;
 				
 			case 'make_required':
@@ -1528,6 +1533,57 @@ class WC_Product_Addons_Conditional_Logic {
 		}
 		
 		return 'unknown';
+	}
+
+	/**
+	 * Modify addon price raw value for cart calculations
+	 *
+	 * @param float $price  Original price
+	 * @param array $option Option data
+	 * @return float Modified price
+	 */
+	public function modify_addon_price_raw( $price, $option ) {
+		// Get current cart context
+		$cart_context = $this->get_cart_evaluation_context();
+		
+		// Check if we have active price modifications from conditional logic
+		if ( isset( $cart_context['price_modifications'] ) ) {
+			$option_key = isset( $option['label'] ) ? sanitize_title( $option['label'] ) : '';
+			
+			if ( $option_key && isset( $cart_context['price_modifications'][ $option_key ] ) ) {
+				$modification = $cart_context['price_modifications'][ $option_key ];
+				
+				// Apply price modification
+				if ( isset( $modification['type'] ) && $modification['type'] === 'set_price' ) {
+					return floatval( $modification['value'] );
+				}
+			}
+		}
+		
+		return $price;
+	}
+
+	/**
+	 * Check if cart price should be adjusted
+	 *
+	 * @param bool  $adjust    Whether to adjust price
+	 * @param array $cart_item Cart item data
+	 * @return bool
+	 */
+	public function should_adjust_cart_price( $adjust, $cart_item ) {
+		// Always allow price adjustments when addons are present
+		return $adjust;
+	}
+
+	/**
+	 * Get cart evaluation context
+	 *
+	 * @return array Cart context
+	 */
+	private function get_cart_evaluation_context() {
+		// This would be populated from session or AJAX data
+		// For now, return empty array
+		return apply_filters( 'woocommerce_product_addons_cart_evaluation_context', array() );
 	}
 }
 

@@ -686,11 +686,13 @@
 						}
 						self.applyRuleResults(response.data);
 					} else {
-						console.error('❌ Rule evaluation failed:', response.data);
-						// Don't show error for outdated requests
-						if (response.data && response.data.code !== 'outdated_request') {
-							self.showError(response.data.message || 'Rule evaluation failed');
+						// Handle outdated request silently
+						if (response.data && response.data.code === 'outdated_request') {
+							console.log('⏭️ Skipping outdated request response');
+							return; // Don't hide loading or show error
 						}
+						console.error('❌ Rule evaluation failed:', response.data);
+						self.showError(response.data.message || 'Rule evaluation failed');
 					}
 					self.hideLoading();
 				},
@@ -756,7 +758,9 @@
 						self.handleOptionVisibility(action.target_addon, action.target_option, false, action);
 						break;
 					case 'set_price':
-						self.handlePriceChange(action.target_addon, action.target_option, action.new_price, action);
+						// Handle both new_price and original config for backward compatibility
+						var newPrice = action.new_price || (action.original_config && action.original_config.action_price) || 0;
+						self.handlePriceChange(action.target_addon, action.target_option, newPrice, action);
 						break;
 					case 'adjust_price':
 						self.handlePriceAdjustment(action.target_addon, action.target_option, action.adjustment, action);
@@ -838,6 +842,7 @@
 		handlePriceChange: function(addonName, optionValue, newPrice, action) {
 			console.log('💰 Setting price for:', addonName + ' -> ' + optionValue + ' = ' + newPrice);
 			
+			var self = this;
 			var addon = this.getAddonByName(addonName);
 			if (!addon || addon.length === 0) {
 				console.warn('⚠️ Addon not found:', addonName);
@@ -847,7 +852,14 @@
 			// Find the specific option and update its price
 			var targetElements = [];
 			if (optionValue) {
-				targetElements = addon.find('option[value="' + optionValue + '"], input[value="' + optionValue + '"]');
+				// Use OptionMatcher for precise matching
+				var options = OptionMatcher.findOptions(addon, optionValue);
+				if (options.length > 0) {
+					targetElements = $(options);
+				} else {
+					// Fallback to direct value match
+					targetElements = addon.find('option[value="' + optionValue + '"], input[value="' + optionValue + '"]');
+				}
 			} else {
 				targetElements = addon.find('option, input[type="radio"], input[type="checkbox"]');
 			}
@@ -855,8 +867,15 @@
 			targetElements.each(function() {
 				var element = $(this);
 				element.data('price', newPrice);
+				element.data('raw-price', newPrice);
+				element.attr('data-price', newPrice);
+				element.attr('data-raw-price', newPrice);
 				self.updatePriceDisplay(element, newPrice);
 			});
+			
+			// Trigger addon update event
+			addon.trigger('woocommerce-product-addon-price-updated');
+			this.form.trigger('woocommerce-product-addons-update');
 		},
 
 		/**
