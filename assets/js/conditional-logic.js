@@ -539,6 +539,7 @@
 			});
 
 			console.log('📊 Addon data prepared for evaluation:', addonData);
+			console.log('📤 Current selections being sent:', this.state.selections);
 
 			// Use queue manager if available, otherwise fallback to regular AJAX
 			var ajaxMethod = $.ajax;
@@ -603,7 +604,18 @@
 				results.rules.forEach(function(rule, index) {
 					console.log(`📝 Rule ${index + 1}: "${rule.name}" - Type: ${rule.rule_type}, Enabled: ${rule.enabled}`);
 					console.log('   Conditions:', rule.conditions);
+					rule.conditions.forEach(function(condition) {
+						if (condition.type === 'addon_selected' && condition.config) {
+							console.log('     🎯 Looking for addon:', condition.config.condition_addon, 
+								'with value:', condition.config.condition_option);
+						}
+					});
 					console.log('   Actions:', rule.actions);
+					rule.actions.forEach(function(action) {
+						if (action.config && action.config.action_addon) {
+							console.log('     🎬 Action targets addon:', action.config.action_addon);
+						}
+					});
 				});
 			}
 

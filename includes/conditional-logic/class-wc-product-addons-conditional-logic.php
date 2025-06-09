@@ -717,6 +717,7 @@ class WC_Product_Addons_Conditional_Logic {
 				
 				if ( strcasecmp( $base_addon_id, $base_selection_id ) === 0 ) {
 					$matches = true;
+					error_log( "Matched by base name: {$base_addon_id} === {$base_selection_id}" );
 				}
 				
 				// Strategy 3: Check if one contains the other (case insensitive)

@@ -194,17 +194,34 @@ class WC_Product_Addons_Addon_Identifier {
 			return true;
 		}
 		
+		// Extract base names (remove scope and ID suffixes)
+		$base1 = preg_replace( '/_(?:product|global|category)_\d+$/', '', $name1 );
+		$base2 = preg_replace( '/_(?:product|global|category)_\d+$/', '', $name2 );
+		
+		// Case-insensitive base name match
+		if ( strcasecmp( $base1, $base2 ) === 0 ) {
+			return true;
+		}
+		
+		// Also try without any numeric suffixes
+		$base1_no_num = preg_replace( '/_\d+$/', '', $base1 );
+		$base2_no_num = preg_replace( '/_\d+$/', '', $base2 );
+		
+		if ( strcasecmp( $base1_no_num, $base2_no_num ) === 0 ) {
+			return true;
+		}
+		
 		// Check if one contains the other (for scope suffixes)
 		if ( strpos( $name1, $name2 ) !== false || strpos( $name2, $name1 ) !== false ) {
 			return true;
 		}
 		
-		// Check without scope suffixes
+		// Check without scope suffixes (legacy)
 		$patterns = array( '/_product_\d+$/', '/_global_\d+$/', '/_category_\d+$/' );
 		foreach ( $patterns as $pattern ) {
 			$clean1 = preg_replace( $pattern, '', $name1 );
 			$clean2 = preg_replace( $pattern, '', $name2 );
-			if ( $clean1 === $clean2 ) {
+			if ( strcasecmp( $clean1, $clean2 ) === 0 ) {
 				return true;
 			}
 		}
