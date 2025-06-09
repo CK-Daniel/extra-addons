@@ -1360,9 +1360,14 @@ class WC_Product_Addons_Conditional_Logic {
 				true
 			);
 			
+			// Use improved CSS if it exists, otherwise fall back to original
+			$css_file = file_exists( WC_PRODUCT_ADDONS_PLUGIN_PATH . '/assets/css/conditional-logic-admin-improved.css' ) 
+				? 'conditional-logic-admin-improved.css' 
+				: 'conditional-logic-admin.css';
+			
 			wp_enqueue_style(
 				'wc-product-addons-conditional-logic-admin',
-				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/conditional-logic-admin.css',
+				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/' . $css_file,
 				array(),
 				WC_PRODUCT_ADDONS_VERSION
 			);

@@ -756,6 +756,18 @@ class WC_Product_Addons_Admin {
 			wp_die( __( 'You do not have sufficient permissions to access this page.', 'woocommerce-product-addons-extra-digital' ) );
 		}
 
+		// Enqueue improved CSS for this page
+		$css_file = file_exists( WC_PRODUCT_ADDONS_PLUGIN_PATH . '/assets/css/conditional-logic-admin-improved.css' ) 
+			? 'conditional-logic-admin-improved.css' 
+			: 'conditional-logic-admin.css';
+		
+		wp_enqueue_style(
+			'wc-product-addons-conditional-logic-admin',
+			WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/' . $css_file,
+			array(),
+			WC_PRODUCT_ADDONS_VERSION
+		);
+
 		include_once WC_PRODUCT_ADDONS_PLUGIN_PATH . '/includes/admin/views/html-conditional-logic-admin.php';
 	}
 	
