@@ -1161,20 +1161,6 @@ class WC_Product_Addons_Conditional_Logic {
 		return false;
 	}
 
-	/**
-	 * Apply action to results array
-	 *
-	 * @param array $results Results array
-	 * @param array $action  Action configuration
-	 * @param array $context Evaluation context
-	 */
-	private function apply_action_to_results( &$results, $action, $context ) {
-		$handler = $this->get_action_handler( $action['type'] );
-		
-		if ( $handler && method_exists( $handler, 'apply_to_results' ) ) {
-			$handler->apply_to_results( $results, $action, $context );
-		}
-	}
 
 	/**
 	 * Render conditional logic panel in admin
