@@ -128,6 +128,7 @@ class WC_Product_Addons_Conditional_Logic {
 		require_once $base_path . 'conditional-logic/class-wc-product-addons-rule-conflict-resolver.php';
 		require_once $base_path . 'conditional-logic/class-wc-product-addons-ajax-queue.php';
 		require_once $base_path . 'conditional-logic/class-wc-product-addons-addon-identifier.php';
+		require_once $base_path . 'conditional-logic/class-wc-product-addons-rule-builder.php';
 	}
 
 	/**

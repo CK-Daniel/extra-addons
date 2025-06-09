@@ -11,6 +11,77 @@
 	'use strict';
 
 	/**
+	 * Option Matcher - Precise option matching system
+	 */
+	var OptionMatcher = {
+		/**
+		 * Find options by rule value
+		 */
+		findOptions: function(addon, ruleValue) {
+			var matches = [];
+			
+			// Strategy 1: Exact value match
+			var exactMatch = addon.find('option[value="' + ruleValue + '"]');
+			if (exactMatch.length > 0) {
+				matches.push({ element: exactMatch, matchType: 'exact-value' });
+			}
+			
+			// Strategy 2: Match by data-option-key (sanitized label)
+			var keyMatch = addon.find('option[data-option-key="' + ruleValue + '"]');
+			if (keyMatch.length > 0) {
+				matches.push({ element: keyMatch, matchType: 'option-key' });
+			}
+			
+			// Strategy 3: Match by data-label (original label)
+			var labelMatch = addon.find('option[data-label="' + ruleValue + '"]');
+			if (labelMatch.length > 0) {
+				matches.push({ element: labelMatch, matchType: 'label' });
+			}
+			
+			// Strategy 4: Match value with -N pattern
+			var patternMatch = addon.find('option[value^="' + ruleValue + '-"]');
+			if (patternMatch.length > 0) {
+				matches.push({ element: patternMatch, matchType: 'value-pattern' });
+			}
+			
+			// Remove duplicates
+			var seen = [];
+			var unique = [];
+			matches.forEach(function(match) {
+				match.element.each(function() {
+					var val = $(this).val();
+					if (seen.indexOf(val) === -1) {
+						seen.push(val);
+						unique.push($(this));
+					}
+				});
+			});
+			
+			return unique;
+		},
+		
+		/**
+		 * Check if option value matches rule value
+		 */
+		matchesRule: function(optionElement, ruleValue) {
+			var $option = $(optionElement);
+			
+			// Check exact value
+			if ($option.val() === ruleValue) return true;
+			
+			// Check data attributes
+			if ($option.data('option-key') === ruleValue) return true;
+			if ($option.data('label') === ruleValue) return true;
+			
+			// Check value pattern
+			var optionValue = $option.val();
+			if (optionValue && optionValue.indexOf(ruleValue + '-') === 0) return true;
+			
+			return false;
+		}
+	};
+
+	/**
 	 * Conditional Logic Engine
 	 */
 	var WC_Product_Addons_Conditional_Logic = {
@@ -20,6 +91,12 @@
 		 */
 		init: function() {
 			console.log('🔧 Initializing WC Product Addons Conditional Logic...');
+			
+			// Check if we have the required global variable
+			if (typeof wc_product_addons_conditional_logic === 'undefined') {
+				console.error('❌ wc_product_addons_conditional_logic global variable not found');
+				return;
+			}
 			
 			this.form = $('form.cart');
 			this.cache = {};
@@ -166,6 +243,12 @@
 			this.addons.each(function() {
 				var addon = $(this);
 				
+				// Safety check
+				if (!addon || addon.length === 0) {
+					console.warn('  ⚠️ Invalid addon element in loop');
+					return; // Continue to next iteration
+				}
+				
 				// Try multiple ways to get the addon name based on the HTML structure
 				var name = null;
 				
@@ -224,26 +307,38 @@
 					}
 				}
 				
-				console.log('🔍 Addon detection methods:', {
-					'data-addon-name (container)': addon.data('addon-name'),
-					'data-addon-name (label)': addon.find('label[data-addon-name]').data('addon-name'),
-					'label text': addon.find('.wc-pao-addon-name').text().trim(),
-					'css classes': addon.attr('class'),
-					'field name': addon.find('input, select, textarea').first().attr('name'),
-					'addon html': addon.length > 0 ? addon[0].outerHTML.substring(0, 200) + '...' : 'No element',
-					'final name': name
-				});
+				// Only log detailed debug info if debug mode is enabled
+				if (wc_product_addons_conditional_logic.debug) {
+					console.log('🔍 Addon detection methods:', {
+						'data-addon-name (container)': addon.data('addon-name'),
+						'data-addon-name (label)': addon.find('label[data-addon-name]').data('addon-name'),
+						'label text': addon.find('.wc-pao-addon-name').text().trim(),
+						'css classes': addon.attr('class'),
+						'field name': addon.find('input, select, textarea').first().attr('name'),
+						'addon html': (function() {
+							try {
+								if (addon && addon.length > 0 && addon[0] && addon[0].outerHTML) {
+									return addon[0].outerHTML.substring(0, 200) + '...';
+								}
+								return 'No HTML available';
+							} catch (e) {
+								return 'Error getting HTML: ' + e.message;
+							}
+						})(),
+						'final name': name
+					});
+				}
 				
 				if (name) {
 					console.log('  ✅ Found addon:', name);
 					this.originalAddons[name] = {
 						element: addon,
-						data: addon.data(),
-						required: addon.find('input, select, textarea').prop('required'),
-						prices: this.extractPrices(addon)
+						data: addon.data() || {},
+						required: addon.find('input, select, textarea').first().prop('required') || false,
+						prices: this.extractPrices(addon) || {}
 					};
 				} else {
-					console.warn('  ❌ Addon found but no name detected:', addon[0]);
+					console.warn('  ❌ Addon found but no name detected:', addon.get(0));
 				}
 			}.bind(this));
 			
@@ -1186,9 +1281,34 @@
 		 * Show specific options
 		 */
 		showOptions: function(addon, optionValues) {
+			var self = this;
 			$.each(optionValues, function(index, value) {
-				addon.find('option[value="' + value + '"]').show();
+				console.log('  🔍 Trying to show option with value:', value);
+				
+				// Use precise option matcher
+				var options = OptionMatcher.findOptions(addon, value);
+				
+				if (options.length > 0) {
+					console.log('    ✅ Found ' + options.length + ' matching option(s)');
+					options.forEach(function($option) {
+						console.log('      Showing option:', $option.val(), '(' + $option.text() + ')');
+						$option.show();
+						$option.prop('disabled', false);
+					});
+				} else {
+					console.log('    ❌ No matching options found');
+				}
+				
+				// For radio/checkbox inputs
 				addon.find('input[value="' + value + '"]').closest('.addon-option').show();
+				addon.find('input[value^="' + value + '-"]').closest('.addon-option').show();
+				addon.find('input[data-option-key="' + value + '"]').closest('.addon-option').show();
+				
+				// Check if select uses select2 and trigger update
+				var select = addon.find('select');
+				if (select.length > 0 && select.hasClass('select2-hidden-accessible')) {
+					select.trigger('change.select2');
+				}
 			});
 		},
 
@@ -1196,9 +1316,40 @@
 		 * Hide specific options
 		 */
 		hideOptions: function(addon, optionValues) {
+			var self = this;
 			$.each(optionValues, function(index, value) {
-				addon.find('option[value="' + value + '"]').hide();
+				console.log('  🔍 Trying to hide option with value:', value);
+				
+				// Use precise option matcher
+				var options = OptionMatcher.findOptions(addon, value);
+				
+				if (options.length > 0) {
+					console.log('    ✅ Found ' + options.length + ' matching option(s)');
+					options.forEach(function($option) {
+						console.log('      Hiding option:', $option.val(), '(' + $option.text() + ')');
+						$option.hide();
+						$option.prop('disabled', true);
+						
+						// If currently selected, deselect it
+						if ($option.is(':selected')) {
+							var select = $option.closest('select');
+							select.val('').trigger('change');
+						}
+					});
+				} else {
+					console.log('    ❌ No matching options found');
+				}
+				
+				// For radio/checkbox inputs
 				addon.find('input[value="' + value + '"]').closest('.addon-option').hide();
+				addon.find('input[value^="' + value + '-"]').closest('.addon-option').hide();
+				addon.find('input[data-option-key="' + value + '"]').closest('.addon-option').hide();
+				
+				// Check if select uses select2 and trigger update
+				var select = addon.find('select');
+				if (select.length > 0 && select.hasClass('select2-hidden-accessible')) {
+					select.trigger('change.select2');
+				}
 			});
 		},
 
@@ -1207,8 +1358,16 @@
 		 */
 		disableOptions: function(addon, optionValues) {
 			$.each(optionValues, function(index, value) {
+				// Direct value match
 				addon.find('option[value="' + value + '"]').prop('disabled', true);
 				addon.find('input[value="' + value + '"]').prop('disabled', true);
+				
+				// Try with -N suffix pattern
+				addon.find('option[value^="' + value + '-"]').prop('disabled', true);
+				addon.find('input[value^="' + value + '-"]').prop('disabled', true);
+				
+				// Try by data-label or data-option-key
+				addon.find('option[data-label="' + value + '"], option[data-option-key="' + value + '"]').prop('disabled', true);
 			});
 		},
 
@@ -1217,8 +1376,16 @@
 		 */
 		enableOptions: function(addon, optionValues) {
 			$.each(optionValues, function(index, value) {
+				// Direct value match
 				addon.find('option[value="' + value + '"]').prop('disabled', false);
 				addon.find('input[value="' + value + '"]').prop('disabled', false);
+				
+				// Try with -N suffix pattern
+				addon.find('option[value^="' + value + '-"]').prop('disabled', false);
+				addon.find('input[value^="' + value + '-"]').prop('disabled', false);
+				
+				// Try by data-label or data-option-key
+				addon.find('option[data-label="' + value + '"], option[data-option-key="' + value + '"]').prop('disabled', false);
 			});
 		},
 
@@ -1287,11 +1454,18 @@
 		 */
 		extractPrices: function(addon) {
 			var prices = {};
-
-			addon.find('option, input[type="radio"], input[type="checkbox"]').each(function() {
-				var element = $(this);
-				prices[element.val()] = parseFloat(element.data('price')) || 0;
-			});
+			
+			try {
+				addon.find('option, input[type="radio"], input[type="checkbox"]').each(function() {
+					var element = $(this);
+					var val = element.val();
+					if (val) {
+						prices[val] = parseFloat(element.data('price')) || 0;
+					}
+				});
+			} catch (e) {
+				console.warn('Error extracting prices:', e);
+			}
 
 			return prices;
 		},

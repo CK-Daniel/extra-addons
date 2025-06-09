@@ -49,8 +49,29 @@ foreach ( $addon['options'] as $i => $option ) {
 	$current_value     = ( in_array( sanitize_title( $option_label ), $selected ) ) ? 1 : 0;
 	?>
 
-	<p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ) . '-' . $i; ?>">
-		<label><input type="checkbox" <?php echo $required_html; ?> class="wc-pao-addon-field wc-pao-addon-checkbox" name="addon-<?php echo sanitize_title( $field_name ); ?>[]" data-raw-price="<?php echo esc_attr( $price_raw ); ?>" data-price="<?php echo esc_attr( $price_display ); ?>" data-price-type="<?php echo esc_attr( $price_type ); ?>" value="<?php echo sanitize_title( $option_label ); ?>" data-label="<?php echo esc_attr( wptexturize( $option_label ) ); ?>" /> <?php echo wptexturize( $option_label . ' ' . $price_for_display ); ?></label>
+	<p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ) . '-' . $i; ?> addon-option"
+	   data-option-value="<?php echo esc_attr( sanitize_title( $option_label ) ); ?>"
+	   data-option-key="<?php echo esc_attr( sanitize_title( $option_label ) ); ?>"
+	   data-option-label="<?php echo esc_attr( wptexturize( $option_label ) ); ?>"
+	   data-option-index="<?php echo esc_attr( $i + 1 ); ?>"
+	   data-option-price="<?php echo esc_attr( $price_raw ); ?>"
+	   data-option-price-type="<?php echo esc_attr( $price_type ); ?>">
+		<label>
+			<input type="checkbox" 
+				<?php echo $required_html; ?> 
+				class="wc-pao-addon-field wc-pao-addon-checkbox" 
+				name="addon-<?php echo sanitize_title( $field_name ); ?>[]" 
+				data-raw-price="<?php echo esc_attr( $price_raw ); ?>" 
+				data-price="<?php echo esc_attr( $price_display ); ?>" 
+				data-price-type="<?php echo esc_attr( $price_type ); ?>" 
+				value="<?php echo sanitize_title( $option_label ); ?>" 
+				data-label="<?php echo esc_attr( wptexturize( $option_label ) ); ?>"
+				data-option-key="<?php echo esc_attr( sanitize_title( $option_label ) ); ?>"
+				data-option-index="<?php echo esc_attr( $i + 1 ); ?>"
+				data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"
+				data-option-id="<?php echo esc_attr( $field_name . '_option_' . ($i + 1) ); ?>"
+				<?php checked( $current_value, 1 ); ?> /> <?php echo wptexturize( $option_label . ' ' . $price_for_display ); ?>
+		</label>
 	</p>
 
 	<?php

@@ -10,11 +10,18 @@ $field_name = ! empty( $addon['field_name'] ) ? $addon['field_name'] : '';
 $required   = ! empty( $addon['required'] ) ? $addon['required'] : '';
 $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc_clean( $_POST[ 'addon-' . sanitize_title( $field_name ) ] ) : '';
 ?>
+<?php 
+// Get addon identifier from the addon-start template context
+global $addon_identifier;
+?>
 <p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ); ?>">
 	<select class="wc-pao-addon-field wc-pao-addon-select" 
 		name="addon-<?php echo sanitize_title( $field_name ); ?>" 
 		id="addon-<?php echo sanitize_title( $field_name ); ?>" 
 		data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"
+		data-addon-identifier="<?php echo isset( $addon_identifier ) ? esc_attr( $addon_identifier ) : ''; ?>"
+		data-addon-name="<?php echo isset( $addon['name'] ) ? esc_attr( $addon['name'] ) : ''; ?>"
+		data-addon-type="select"
 		<?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?>>
 
 		<?php if ( empty( $required ) ) { ?>
@@ -59,7 +66,10 @@ $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc
 			        value="<?php echo sanitize_title( $label ) . '-' . $loop; ?>" 
 			        data-label="<?php echo esc_attr( wptexturize( $label ) ); ?>"
 			        data-option-key="<?php echo esc_attr( sanitize_title( $label ) ); ?>"
-			        data-option-index="<?php echo esc_attr( $loop ); ?>"><?php echo wptexturize( $label ) . ' ' . $price_for_display; ?></option>
+			        data-option-index="<?php echo esc_attr( $loop ); ?>"
+			        data-option-value="<?php echo esc_attr( sanitize_title( $label ) . '-' . $loop ); ?>"
+			        data-option-id="<?php echo esc_attr( $field_name . '_option_' . $loop ); ?>"
+			        data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"><?php echo wptexturize( $label ) . ' ' . $price_for_display; ?></option>
 		<?php } ?>
 
 	</select>
