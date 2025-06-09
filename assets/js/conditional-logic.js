@@ -22,7 +22,7 @@
 			console.log('🔧 Initializing WC Product Addons Conditional Logic...');
 			
 			this.form = $('form.cart');
-			this.addons = $('.product-addon, .wc-pao-addon');
+			this.addons = $('.product-addon, .wc-pao-addon, .wc-pao-addon-container');
 			this.cache = {};
 			this.debounceTimer = null;
 			this.evaluationQueue = [];
@@ -152,12 +152,26 @@
 					}
 				}
 				
+				// Method 6: Get from the field ID pattern (e.g., addon-140-test-0)
+				if (!name) {
+					var field = addon.find('input, select, textarea').first();
+					if (field.length) {
+						var fieldId = field.attr('id') || '';
+						// Extract from addon-productid-name-index pattern
+						var match = fieldId.match(/addon-\d+-([^-]+)-\d+/);
+						if (match && match[1]) {
+							name = match[1];
+						}
+					}
+				}
+				
 				console.log('🔍 Addon detection methods:', {
 					'data-addon-name (container)': addon.data('addon-name'),
 					'data-addon-name (label)': addon.find('label[data-addon-name]').data('addon-name'),
 					'label text': addon.find('.wc-pao-addon-name').text().trim(),
 					'css classes': addon.attr('class'),
 					'field name': addon.find('input, select, textarea').first().attr('name'),
+					'addon html': addon[0].outerHTML.substring(0, 200) + '...',
 					'final name': name
 				});
 				
@@ -182,16 +196,23 @@
 		 * Handle field change
 		 */
 		handleFieldChange: function(field) {
-			var addon = field.closest('.wc-pao-addon, .product-addon');
+			var addon = field.closest('.wc-pao-addon, .product-addon, .wc-pao-addon-container');
 			
-			// Use our improved name detection
+			// Use consistent identifier
+			var addonId = this.getAddonIdentifier(addon);
 			var addonName = this.getAddonNameFromElement(addon);
 			
-			console.log('🔄 Field changed in addon:', addonName, 'value:', this.getFieldValue(field));
+			console.log('🔄 Field changed in addon:', addonName, 'ID:', addonId, 'value:', this.getFieldValue(field));
 			
-			if (addonName) {
-				// Update state
-				this.updateSelection(addonName, field);
+			if (addonId) {
+				// Update state using identifier
+				this.updateSelection(addonId, field);
+				
+				// Store name mapping for display
+				if (addonName && addonName !== addonId) {
+					this.state.addonNames = this.state.addonNames || {};
+					this.state.addonNames[addonId] = addonName;
+				}
 				
 				// Debounce evaluation
 				this.debounceEvaluation();
@@ -199,50 +220,78 @@
 		},
 
 		/**
-		 * Get addon name from element
+		 * Get addon identifier from element
+		 */
+		getAddonIdentifier: function(addon) {
+			if (!addon || addon.length === 0) return null;
+			
+			// Priority 1: Use data-addon-identifier
+			var identifier = addon.attr('data-addon-identifier');
+			if (identifier) {
+				return identifier;
+			}
+			
+			// Priority 2: Use data-addon-field-name
+			var fieldName = addon.attr('data-addon-field-name');
+			if (fieldName) {
+				return fieldName;
+			}
+			
+			// Priority 3: Fall back to name detection
+			return this.getAddonNameFromElement(addon);
+		},
+
+		/**
+		 * Get addon name from element (for display/fallback)
 		 */
 		getAddonNameFromElement: function(addon) {
 			if (!addon || addon.length === 0) return null;
 			
-			// Try multiple methods (same as in cataloging)
-			var name = addon.data('addon-name') || 
-				addon.find('label[data-addon-name]').data('addon-name') ||
-				addon.find('.wc-pao-addon-name').text().replace(/\s*\*\s*$/, '').trim();
-				
-			// Try CSS class matching
-			if (!name) {
-				var classes = addon.attr('class') || '';
-				var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
-				if (match && match[1] && match[1] !== 'container') {
-					name = match[1];
+			// Priority 1: Use data-addon-name
+			var dataName = addon.attr('data-addon-name');
+			if (dataName) {
+				return dataName;
+			}
+			
+			// Priority 2: Get from heading/label
+			var heading = addon.find('.wc-pao-addon-name, legend:first, h3:first, h4:first').first();
+			if (heading.length > 0) {
+				var name = heading.text().trim().replace(/\s*\*\s*$/, '').trim();
+				if (name) {
+					return name;
 				}
 			}
 			
-			// Try field name extraction
-			if (!name) {
-				var field = addon.find('input, select, textarea').first();
-				if (field.length) {
-					var fieldName = field.attr('name') || field.attr('id') || '';
-					var match = fieldName.match(/addon-\d+-([^-]+)-/);
-					if (match && match[1]) {
-						name = match[1];
-					}
+			// Priority 3: Extract from field name
+			var field = addon.find('input[name*="addon-"], select[name*="addon-"], textarea[name*="addon-"]').first();
+			if (field.length > 0) {
+				var fieldName = field.attr('name');
+				var match = fieldName.match(/addon-\d+-([^\[]+)/);
+				if (match && match[1]) {
+					return match[1].replace(/-/g, ' ').replace(/_/g, ' ');
 				}
 			}
 			
-			return name;
+			// Priority 4: CSS class matching
+			var classes = addon.attr('class') || '';
+			var classMatch = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+			if (classMatch && classMatch[1] && classMatch[1] !== 'container') {
+				return classMatch[1];
+			}
+			
+			return 'unknown_addon';
 		},
 
 		/**
 		 * Handle field input (for text fields)
 		 */
 		handleFieldInput: function(field) {
-			var addon = field.closest('.wc-pao-addon, .product-addon');
-			var addonName = this.getAddonNameFromElement(addon);
+			var addon = field.closest('.wc-pao-addon, .product-addon, .wc-pao-addon-container');
+			var addonId = this.getAddonIdentifier(addon);
 			
-			if (addonName) {
+			if (addonId) {
 				// Update state
-				this.updateSelection(addonName, field);
+				this.updateSelection(addonId, field);
 				
 				// Debounce evaluation with longer delay for typing
 				this.debounceEvaluation(500);
@@ -363,14 +412,15 @@
 			// Show loading state
 			this.showLoading();
 
-			// Prepare addon data for evaluation using our cataloged addons
+			// Prepare addon data for evaluation
 			var addonData = [];
 			
-			for (var addonName in this.originalAddons) {
-				var addonInfo = this.originalAddons[addonName];
-				var addon = addonInfo.element;
+			this.addons.each(function() {
+				var addon = $(this);
+				var addonId = self.getAddonIdentifier(addon);
+				var addonName = self.getAddonNameFromElement(addon);
 				
-				console.log('🔧 Preparing data for addon:', addonName);
+				console.log('🔧 Preparing data for addon:', addonName, 'ID:', addonId);
 				
 				// Collect addon options for rule evaluation
 				var options = [];
@@ -403,16 +453,21 @@
 
 				addonData.push({
 					name: addonName,
-					id: addonName, // Use the cleaned name as ID
+					id: addonId, // Use consistent identifier
+					identifier: addonId,
+					display_name: addonName,
 					options: options,
-					current_value: self.state.selections[addonName] ? self.state.selections[addonName].value : null
+					current_value: self.state.selections[addonId] ? self.state.selections[addonId].value : null
 				});
-			}
+			});
 
 			console.log('📊 Addon data prepared for evaluation:', addonData);
 
+			// Use queue manager if available, otherwise fallback to regular AJAX
+			var ajaxMethod = $.wcPaoAjaxQueue ? $.wcPaoAjaxQueue.request : $.ajax;
+			
 			// Make AJAX request to evaluate rules from database
-			$.ajax({
+			ajaxMethod({
 				url: wc_product_addons_conditional_logic.ajax_url,
 				type: 'POST',
 				data: {
@@ -424,17 +479,30 @@
 					user_data: JSON.stringify(this.state.user),
 					cart_data: JSON.stringify(this.state.cart)
 				},
+				cancelPrevious: true, // Cancel any pending evaluation requests
 				success: function(response) {
 					console.log('✅ Rule evaluation response:', response);
 					if (response.success) {
+						// Check if response includes sequence metadata
+						if (response.data && response.data._sequence) {
+							console.log('Response sequence:', response.data._sequence);
+						}
 						self.applyRuleResults(response.data);
 					} else {
 						console.error('❌ Rule evaluation failed:', response.data);
+						// Don't show error for outdated requests
+						if (response.data && response.data.code !== 'outdated_request') {
+							self.showError(response.data.message || 'Rule evaluation failed');
+						}
 					}
 					self.hideLoading();
 				},
 				error: function(xhr, status, error) {
-					console.error('💥 AJAX error during rule evaluation:', xhr, status, error);
+					// Ignore aborted requests (from cancellation)
+					if (xhr.statusText !== 'abort') {
+						console.error('💥 AJAX error during rule evaluation:', xhr, status, error);
+						self.showError('Network error during rule evaluation');
+					}
 					self.hideLoading();
 				}
 			});
@@ -446,6 +514,16 @@
 		applyRuleResults: function(results) {
 			var self = this;
 			console.log('🎯 Applying rule results:', results);
+			
+			// Log all loaded rules for debugging
+			if (results.rules && results.rules.length > 0) {
+				console.log('📋 All loaded rules:', results.rules);
+				results.rules.forEach(function(rule, index) {
+					console.log(`📝 Rule ${index + 1}: "${rule.name}" - Type: ${rule.rule_type}, Enabled: ${rule.enabled}`);
+					console.log('   Conditions:', rule.conditions);
+					console.log('   Actions:', rule.actions);
+				});
+			}
 
 			if (!results || !results.actions) {
 				console.log('⚠️ No actions to apply');
@@ -634,51 +712,59 @@
 		},
 
 		/**
-		 * Get addon by name
+		 * Get addon by identifier or name
 		 */
-		getAddonByName: function(name) {
-			console.log('🔍 Looking for addon by name:', name);
+		getAddonByName: function(identifier) {
+			console.log('🔍 Looking for addon by identifier:', identifier);
 			
-			// First try our cataloged addons
-			if (this.originalAddons && this.originalAddons[name]) {
-				console.log('  ✅ Found in catalog:', name);
-				return this.originalAddons[name].element;
-			}
-			
-			// Fallback to searching through DOM
+			var self = this;
 			var found = null;
+			
+			// Search through all addons
 			this.addons.each(function() {
 				var addon = $(this);
+				var addonId = self.getAddonIdentifier(addon);
+				var addonName = self.getAddonNameFromElement(addon);
 				
-				// Try multiple name detection methods
-				var addonName = addon.data('addon-name') || 
-					addon.find('label[data-addon-name]').data('addon-name') ||
-					addon.find('.wc-pao-addon-name').text().replace(/\s*\*\s*$/, '').trim();
-					
-				// Also try CSS class matching
-				if (!addonName) {
-					var classes = addon.attr('class') || '';
-					var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
-					if (match && match[1] && match[1] !== 'container') {
-						addonName = match[1];
-					}
+				// Check direct identifier match
+				if (addonId === identifier) {
+					found = addon;
+					console.log('  ✅ Found by identifier:', addonId);
+					return false; // Break the loop
 				}
 				
-				console.log('  🔍 Checking addon:', addonName, 'against target:', name);
-				
-				if (addonName === name || addonName === name.toLowerCase() || addonName === name.replace(/[^a-zA-Z0-9]/g, '')) {
+				// Check name match (for backward compatibility)
+				if (addonName === identifier || 
+					self.normalizeAddonName(addonName) === self.normalizeAddonName(identifier)) {
 					found = addon;
-					console.log('  ✅ Found match:', addonName);
+					console.log('  ✅ Found by name:', addonName);
+					return false; // Break the loop
+				}
+				
+				// Check if identifier matches any part of the addon's identifiers
+				if ((addonId && addonId.indexOf(identifier) !== -1) ||
+					(addonName && addonName.indexOf(identifier) !== -1)) {
+					found = addon;
+					console.log('  ✅ Found by partial match:', addonId || addonName);
 					return false; // Break the loop
 				}
 			});
 			
 			if (!found) {
-				console.warn('  ❌ Addon not found:', name);
-				console.log('  📋 Available addons:', Object.keys(this.originalAddons || {}));
+				console.warn('  ❌ Addon not found:', identifier);
 			}
 			
 			return found;
+		},
+
+		/**
+		 * Normalize addon name for comparison
+		 */
+		normalizeAddonName: function(name) {
+			if (!name) return '';
+			return name.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '_')
+				.replace(/^_+|_+$/g, '');
 		},
 
 		/**
@@ -1030,6 +1116,15 @@
 		 */
 		hideLoading: function() {
 			this.form.removeClass('processing');
+		},
+
+		/**
+		 * Show error message
+		 */
+		showError: function(message) {
+			console.error('Conditional Logic Error:', message);
+			// You can implement a user-friendly error display here
+			// For now, just log it
 		}
 	};
 

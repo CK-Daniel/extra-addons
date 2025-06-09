@@ -51,6 +51,34 @@ class WC_Product_Addons_Conditional_Logic {
 	private $evaluation_cache = array();
 
 	/**
+	 * Dependency graph instance
+	 *
+	 * @var WC_Product_Addons_Dependency_Graph
+	 */
+	private $dependency_graph = null;
+
+	/**
+	 * Conflict resolver instance
+	 *
+	 * @var WC_Product_Addons_Rule_Conflict_Resolver
+	 */
+	private $conflict_resolver = null;
+
+	/**
+	 * Maximum cascade iterations before warning
+	 *
+	 * @var int
+	 */
+	private $max_cascade_iterations = 20;
+
+	/**
+	 * Enable detailed debugging
+	 *
+	 * @var bool
+	 */
+	private $debug_mode = false;
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return WC_Product_Addons_Conditional_Logic
@@ -75,7 +103,31 @@ class WC_Product_Addons_Conditional_Logic {
 	 * Constructor
 	 */
 	private function __construct() {
+		// Load dependencies
+		$this->load_dependencies();
+		
+		// Initialize components
+		$this->dependency_graph = new WC_Product_Addons_Dependency_Graph();
+		$this->conflict_resolver = new WC_Product_Addons_Rule_Conflict_Resolver();
+		$this->debug_mode = defined( 'WC_PAO_DEBUG' ) && WC_PAO_DEBUG;
+		
+		// Initialize AJAX queue
+		WC_Product_Addons_Ajax_Queue::init();
+		
 		$this->init();
+	}
+
+	/**
+	 * Load required class files
+	 */
+	private function load_dependencies() {
+		$base_path = plugin_dir_path( dirname( __FILE__ ) );
+		
+		// Load new components
+		require_once $base_path . 'conditional-logic/class-wc-product-addons-dependency-graph.php';
+		require_once $base_path . 'conditional-logic/class-wc-product-addons-rule-conflict-resolver.php';
+		require_once $base_path . 'conditional-logic/class-wc-product-addons-ajax-queue.php';
+		require_once $base_path . 'conditional-logic/class-wc-product-addons-addon-identifier.php';
 	}
 
 	/**
@@ -541,6 +593,7 @@ class WC_Product_Addons_Conditional_Logic {
 			'actions' => $actions_to_apply,
 			'rules_evaluated' => count( $rules ),
 			'actions_count' => count( $actions_to_apply ),
+			'rules' => $rules,
 			'context' => $context
 		);
 		
@@ -638,12 +691,19 @@ class WC_Product_Addons_Conditional_Logic {
 		
 		$selections = $context['selections'] ?? array();
 		
-		// Find the addon selection by ID or name
+		// Find the addon selection by ID or name with improved matching
 		$selected_value = null;
-		foreach ( $selections as $addon_name => $selection ) {
-			if ( $addon_name === $addon_id || strpos( $addon_id, $addon_name ) !== false ) {
-				$selected_value = $selection['value'] ?? null;
-				break;
+		
+		// First try exact match
+		if ( isset( $selections[ $addon_id ] ) ) {
+			$selected_value = $selections[ $addon_id ]['value'] ?? null;
+		} else {
+			// Try flexible matching
+			foreach ( $selections as $selection_id => $selection ) {
+				if ( WC_Product_Addons_Addon_Identifier::names_match( $selection_id, $addon_id ) ) {
+					$selected_value = $selection['value'] ?? null;
+					break;
+				}
 			}
 		}
 		
@@ -734,17 +794,28 @@ class WC_Product_Addons_Conditional_Logic {
 	 * Resolve addon target from ID to name
 	 */
 	private function resolve_addon_target( $addon_id, $context ) {
-		// For now, extract the addon name from the ID format
-		// ID format is usually like "addon_name_global_123" or just "addon_name"
-		if ( strpos( $addon_id, '_global_' ) !== false ) {
-			$parts = explode( '_global_', $addon_id );
-			return $parts[0];
-		} elseif ( strpos( $addon_id, '_product_' ) !== false ) {
-			$parts = explode( '_product_', $addon_id );
-			return $parts[0];
+		// Use the addon identifier helper
+		$parsed = WC_Product_Addons_Addon_Identifier::parse_identifier( $addon_id );
+		
+		// Try to find the addon in context data
+		if ( isset( $context['addon_data'] ) && is_array( $context['addon_data'] ) ) {
+			foreach ( $context['addon_data'] as $addon ) {
+				if ( isset( $addon['id'] ) && $addon['id'] === $addon_id ) {
+					return $addon['id']; // Return the consistent identifier
+				}
+				if ( isset( $addon['identifier'] ) && $addon['identifier'] === $addon_id ) {
+					return $addon['identifier'];
+				}
+				// Check by name for backward compatibility
+				if ( isset( $addon['name'] ) && 
+					WC_Product_Addons_Addon_Identifier::names_match( $addon['name'], $addon_id ) ) {
+					return isset( $addon['id'] ) ? $addon['id'] : $addon['name'];
+				}
+			}
 		}
 		
-		return $addon_id;
+		// Return parsed name or original ID
+		return ! empty( $parsed['name'] ) ? $parsed['name'] : $addon_id;
 	}
 
 	/**
@@ -833,10 +904,11 @@ class WC_Product_Addons_Conditional_Logic {
 	 * @return array Results array
 	 */
 	private function evaluate_cascading_conditions( $addon_data, $context ) {
-		$max_iterations = 10; // Prevent infinite loops
 		$iteration = 0;
 		$results = array();
 		$previous_state = array();
+		$state_history = array();
+		$actions_by_iteration = array();
 		
 		// Initialize results
 		foreach ( $addon_data as $addon ) {
@@ -849,47 +921,143 @@ class WC_Product_Addons_Conditional_Logic {
 			);
 		}
 		
+		// Build dependency graph and check for cycles
+		$all_rules = $this->get_all_rules_from_addons( $addon_data );
+		$this->dependency_graph->build_from_rules( $all_rules );
+		
+		// Validate dependency graph
+		$validation = $this->dependency_graph->validate();
+		if ( ! $validation['valid'] ) {
+			// Log errors but continue with evaluation
+			foreach ( $validation['errors'] as $error ) {
+				error_log( 'WC Product Addons Rule Error: ' . $error );
+				
+				// Add user notification
+				if ( current_user_can( 'manage_woocommerce' ) ) {
+					wc_add_notice( $error, 'error' );
+				}
+			}
+		}
+		
+		// Log warnings
+		foreach ( $validation['warnings'] as $warning ) {
+			if ( $this->debug_mode ) {
+				error_log( 'WC Product Addons Rule Warning: ' . $warning );
+			}
+		}
+		
+		// Get evaluation order
+		$evaluation_layers = $this->dependency_graph->get_evaluation_layers();
+		
 		do {
 			$iteration++;
 			$state_changed = false;
+			$iteration_actions = array();
 			
-			// Store current state to compare
-			$current_state = json_encode( $results );
+			// Store current state
+			$current_state = $this->serialize_state( $results );
+			
+			// Check for state loop (oscillation)
+			if ( in_array( $current_state, $state_history, true ) ) {
+				error_log( sprintf(
+					'WC Product Addons: State loop detected at iteration %d. Breaking evaluation.',
+					$iteration
+				) );
+				
+				if ( current_user_can( 'manage_woocommerce' ) ) {
+					wc_add_notice( 
+						__( 'Conditional logic evaluation stopped: rule state loop detected.', 'woocommerce-product-addons-extra-digital' ),
+						'warning'
+					);
+				}
+				break;
+			}
+			
+			$state_history[] = $current_state;
 			
 			if ( $current_state !== $previous_state ) {
 				$state_changed = true;
 				$previous_state = $current_state;
 			}
 			
-			// Update context with current rule results
+			// Update context
 			$context['rule_results'] = $results;
 			$context['iteration'] = $iteration;
+			$context['evaluation_layers'] = $evaluation_layers;
 			
-			// Evaluate all rules in priority order
-			$prioritized_rules = $this->get_prioritized_rules( $addon_data );
-			
-			foreach ( $prioritized_rules as $rule_data ) {
-				$addon_name = $rule_data['addon_name'];
-				$rule = $rule_data['rule'];
+			// Evaluate rules by layer for proper dependency order
+			foreach ( $evaluation_layers as $layer_index => $layer_addons ) {
+				$layer_actions = array();
 				
-				if ( $this->evaluate_conditions( $rule['conditions'], $context ) ) {
-					foreach ( $rule['actions'] as $action ) {
-						// Check if this action affects other addons (cascading)
-						if ( $this->is_cascading_action( $action ) ) {
-							$this->apply_cascading_action( $results, $action, $context );
-						} else {
-							// Apply to current addon
-							$this->apply_action_to_results( $results[ $addon_name ], $action, $context );
+				foreach ( $layer_addons as $addon_name ) {
+					$rules = $this->get_rules_for_addon( $addon_data, $addon_name );
+					
+					foreach ( $rules as $rule ) {
+						if ( $this->evaluate_conditions( $rule['conditions'], $context ) ) {
+							foreach ( $rule['actions'] as $action ) {
+								// Add rule metadata for conflict resolution
+								$action['rule_id'] = $rule['id'] ?? uniqid();
+								$action['rule_priority'] = $rule['priority'] ?? 10;
+								$action['rule_name'] = $rule['name'] ?? '';
+								$action['evaluation_layer'] = $layer_index;
+								
+								$layer_actions[] = $action;
+							}
 						}
 					}
 				}
+				
+				// Resolve conflicts within layer
+				if ( ! empty( $layer_actions ) ) {
+					$resolved_actions = $this->conflict_resolver->resolve_conflicts( $layer_actions );
+					$iteration_actions = array_merge( $iteration_actions, $resolved_actions );
+				}
 			}
 			
-		} while ( $state_changed && $iteration < $max_iterations );
+			// Apply all resolved actions for this iteration
+			foreach ( $iteration_actions as $action ) {
+				$this->apply_action_to_results( $results, $action, $context );
+			}
+			
+			$actions_by_iteration[ $iteration ] = $iteration_actions;
+			
+			// Check iteration limit
+			if ( $iteration >= $this->max_cascade_iterations ) {
+				error_log( sprintf(
+					'WC Product Addons: Maximum cascade iterations (%d) reached. Evaluation stopped.',
+					$this->max_cascade_iterations
+				) );
+				
+				if ( current_user_can( 'manage_woocommerce' ) ) {
+					wc_add_notice( 
+						sprintf(
+							__( 'Conditional logic evaluation stopped after %d iterations to prevent infinite loop.', 'woocommerce-product-addons-extra-digital' ),
+							$this->max_cascade_iterations
+						),
+						'warning'
+					);
+				}
+				break;
+			}
+			
+		} while ( $state_changed );
 		
-		// Log if we hit max iterations (potential circular dependency)
-		if ( $iteration >= $max_iterations ) {
-			error_log( 'WC Product Addons: Maximum iterations reached in cascading evaluation. Possible circular dependency.' );
+		// Add evaluation metadata
+		$results['_metadata'] = array(
+			'iterations' => $iteration,
+			'cycles_detected' => ! empty( $validation['errors'] ),
+			'warnings' => $validation['warnings'],
+			'evaluation_layers' => count( $evaluation_layers ),
+			'total_actions' => array_sum( array_map( 'count', $actions_by_iteration ) ),
+			'conflicts_resolved' => count( $this->conflict_resolver->get_conflict_log() ),
+		);
+		
+		if ( $this->debug_mode ) {
+			$results['_debug'] = array(
+				'dependency_graph' => $this->dependency_graph->get_visualization_data(),
+				'actions_by_iteration' => $actions_by_iteration,
+				'conflict_log' => $this->conflict_resolver->get_conflict_log(),
+			);
 		}
 		
 		return $results;
@@ -1084,6 +1252,13 @@ class WC_Product_Addons_Conditional_Logic {
 				'debug'    => defined( 'WP_DEBUG' ) && WP_DEBUG,
 			) );
 			
+			// Add AJAX queue manager
+			wp_add_inline_script( 
+				'wc-product-addons-conditional-logic', 
+				WC_Product_Addons_Ajax_Queue::get_queue_manager_js(),
+				'before' 
+			);
+			
 			// Also check if we need to trigger the main addon scripts
 			if ( ! wp_script_is( 'woocommerce-addons-extra-digital', 'enqueued' ) && class_exists( 'WC_Product_Addons_Display' ) ) {
 				$display = $GLOBALS['Product_Addon_Display'] ?? new WC_Product_Addons_Display();
@@ -1092,6 +1267,126 @@ class WC_Product_Addons_Conditional_Logic {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Serialize state for comparison
+	 *
+	 * @param array $state State array
+	 * @return string Serialized state
+	 */
+	private function serialize_state( $state ) {
+		// Remove metadata before serialization
+		$clean_state = $state;
+		unset( $clean_state['_metadata'], $clean_state['_debug'] );
+		return md5( json_encode( $clean_state ) );
+	}
+
+	/**
+	 * Get all rules from addon data
+	 *
+	 * @param array $addon_data Addon data array
+	 * @return array All rules indexed by target
+	 */
+	private function get_all_rules_from_addons( $addon_data ) {
+		$rules = array();
+		
+		foreach ( $addon_data as $addon ) {
+			if ( isset( $addon['conditional_logic'] ) && is_array( $addon['conditional_logic'] ) ) {
+				foreach ( $addon['conditional_logic'] as $rule ) {
+					$rule['target_addon'] = $addon['name'];
+					$rules[] = $rule;
+				}
+			}
+		}
+		
+		return $rules;
+	}
+
+	/**
+	 * Get rules for specific addon
+	 *
+	 * @param array $addon_data Addon data
+	 * @param string $addon_name Addon name
+	 * @return array Rules for addon
+	 */
+	private function get_rules_for_addon( $addon_data, $addon_name ) {
+		foreach ( $addon_data as $addon ) {
+			if ( $addon['name'] === $addon_name && isset( $addon['conditional_logic'] ) ) {
+				return $addon['conditional_logic'];
+			}
+		}
+		return array();
+	}
+
+	/**
+	 * Apply action to results array
+	 *
+	 * @param array &$results Results array
+	 * @param array $action Action to apply
+	 * @param array $context Evaluation context
+	 */
+	private function apply_action_to_results( &$results, $action, $context ) {
+		$target = $this->get_action_target_addon( $action );
+		
+		if ( ! isset( $results[ $target ] ) ) {
+			$results[ $target ] = array(
+				'visible'         => true,
+				'required'        => false,
+				'price_modifiers' => array(),
+				'option_modifiers' => array(),
+				'modifications'   => array(),
+			);
+		}
+		
+		switch ( $action['type'] ) {
+			case 'show_addon':
+				$results[ $target ]['visible'] = true;
+				break;
+				
+			case 'hide_addon':
+				$results[ $target ]['visible'] = false;
+				break;
+				
+			case 'make_required':
+				$results[ $target ]['required'] = true;
+				break;
+				
+			case 'make_optional':
+				$results[ $target ]['required'] = false;
+				break;
+				
+			case 'set_price':
+			case 'adjust_price':
+				$results[ $target ]['price_modifiers'][] = $action;
+				break;
+				
+			case 'show_option':
+			case 'hide_option':
+				$results[ $target ]['option_modifiers'][] = $action;
+				break;
+				
+			default:
+				$results[ $target ]['modifications'][] = $action;
+		}
+	}
+
+	/**
+	 * Get action target addon name
+	 *
+	 * @param array $action Action configuration
+	 * @return string Target addon name
+	 */
+	private function get_action_target_addon( $action ) {
+		if ( isset( $action['target_addon'] ) ) {
+			return $action['target_addon'];
+		}
+		
+		if ( isset( $action['config']['action_addon'] ) ) {
+			return $this->resolve_addon_target( $action['config']['action_addon'], array() );
+		}
+		
+		return 'unknown';
 	}
 }
 
