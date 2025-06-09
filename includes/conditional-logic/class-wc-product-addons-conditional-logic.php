@@ -694,22 +694,70 @@ class WC_Product_Addons_Conditional_Logic {
 		// Find the addon selection by ID or name with improved matching
 		$selected_value = null;
 		
+		error_log( "Available selections: " . json_encode( array_keys( $selections ) ) );
+		
 		// First try exact match
 		if ( isset( $selections[ $addon_id ] ) ) {
 			$selected_value = $selections[ $addon_id ]['value'] ?? null;
+			error_log( "Found exact match for {$addon_id}" );
 		} else {
 			// Try flexible matching
 			foreach ( $selections as $selection_id => $selection ) {
+				// Try multiple matching strategies
+				$matches = false;
+				
+				// Strategy 1: Use identifier matching
 				if ( WC_Product_Addons_Addon_Identifier::names_match( $selection_id, $addon_id ) ) {
+					$matches = true;
+				}
+				
+				// Strategy 2: Extract base name from both and compare
+				$base_addon_id = preg_replace( '/_(?:global|product|category)_\d+$/', '', $addon_id );
+				$base_selection_id = preg_replace( '/_(?:global|product|category)_\d+$/', '', $selection_id );
+				
+				if ( strcasecmp( $base_addon_id, $base_selection_id ) === 0 ) {
+					$matches = true;
+				}
+				
+				// Strategy 3: Check if one contains the other (case insensitive)
+				if ( stripos( $addon_id, $selection_id ) !== false || stripos( $selection_id, $addon_id ) !== false ) {
+					$matches = true;
+				}
+				
+				if ( $matches ) {
 					$selected_value = $selection['value'] ?? null;
+					error_log( "Found match: {$selection_id} matches {$addon_id}" );
 					break;
 				}
 			}
 		}
 		
-		error_log( "Selected value for {$addon_id}: " . ( $selected_value ?? 'NULL' ) );
+		if ( $selected_value === null ) {
+			error_log( "No match found for addon_id: {$addon_id} in selections" );
+		}
 		
-		$is_selected = ( $selected_value === $option_value );
+		error_log( "Selected value for {$addon_id}: " . ( $selected_value ?? 'NULL' ) );
+		error_log( "Comparing with option value: {$option_value}" );
+		
+		// Flexible value comparison
+		$is_selected = false;
+		
+		if ( $selected_value !== null ) {
+			// Try exact match first
+			if ( $selected_value === $option_value ) {
+				$is_selected = true;
+			}
+			// Try case-insensitive match
+			elseif ( strcasecmp( $selected_value, $option_value ) === 0 ) {
+				$is_selected = true;
+			}
+			// Try with sanitized values
+			elseif ( sanitize_title( $selected_value ) === sanitize_title( $option_value ) ) {
+				$is_selected = true;
+			}
+		}
+		
+		error_log( "Is selected: " . ( $is_selected ? 'YES' : 'NO' ) );
 		
 		return ( $state === 'selected' ) ? $is_selected : ! $is_selected;
 	}
@@ -752,7 +800,10 @@ class WC_Product_Addons_Conditional_Logic {
 		switch ( $type ) {
 			case 'hide_addon':
 			case 'show_addon':
-				$processed_action['target_addon'] = $this->resolve_addon_target( $config['action_addon'] ?? '', $context );
+				$target = $config['action_addon'] ?? '';
+				$processed_action['target_addon'] = $this->resolve_addon_target( $target, $context );
+				$processed_action['original_target'] = $target;
+				error_log( "Action {$type}: target={$target}, resolved={$processed_action['target_addon']}" );
 				break;
 				
 			case 'hide_option':
@@ -823,27 +874,86 @@ class WC_Product_Addons_Conditional_Logic {
 	 */
 	public function inject_addon_conditional_data( $addon, $addon_name ) {
 		// Get the current product ID
-		global $post;
-		$product_id = $post ? $post->ID : 0;
+		global $post, $product;
+		$product_id = 0;
 		
-		// Generate a unique addon identifier
-		$addon_key = $this->generate_addon_key( $addon, $addon_name );
+		if ( $product && is_object( $product ) ) {
+			$product_id = $product->get_id();
+		} elseif ( $post ) {
+			$product_id = $post->ID;
+		}
 		
-		// Check if this addon has any rules targeting it
-		$has_rules = $this->addon_has_conditional_rules( $addon_key, $product_id );
+		// Generate a unique addon identifier using our unified system
+		$scope = isset( $addon['global_addon_id'] ) ? 'global' : 'product';
+		$addon_identifier = WC_Product_Addons_Addon_Identifier::generate_identifier( $addon, $product_id, $scope );
 		
-		// Output data attributes for JavaScript
-		echo sprintf(
-			'<script type="application/json" class="wc-pao-conditional-data" data-addon-key="%s">%s</script>',
-			esc_attr( $addon_key ),
-			wp_json_encode( array(
-				'addon_key' => $addon_key,
-				'addon_name' => $addon_name,
-				'field_name' => $addon['field_name'] ?? '',
-				'has_rules' => $has_rules,
-				'options' => $this->prepare_addon_options_data( $addon )
-			) )
+		// Get rules that might affect this addon
+		$rules_data = $this->get_rules_affecting_addon( $addon_identifier, $product_id );
+		
+		// Output data for JavaScript
+		$data = array(
+			'addon_identifier' => $addon_identifier,
+			'addon_name' => $addon_name,
+			'field_name' => WC_Product_Addons_Addon_Identifier::get_field_name( $addon ),
+			'scope' => $scope,
+			'has_rules' => ! empty( $rules_data ),
+			'options' => $this->prepare_addon_options_data( $addon ),
+			'rule_targets' => $rules_data,
 		);
+		
+		// Also add debug info if in debug mode
+		if ( $this->debug_mode ) {
+			$data['debug'] = array(
+				'addon_data' => $addon,
+				'product_id' => $product_id,
+			);
+		}
+		
+		echo sprintf(
+			'<script type="application/json" class="wc-pao-conditional-data" data-addon-identifier="%s">%s</script>',
+			esc_attr( $addon_identifier ),
+			wp_json_encode( $data )
+		);
+	}
+
+	/**
+	 * Get rules that might affect an addon
+	 */
+	private function get_rules_affecting_addon( $addon_identifier, $product_id ) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'wc_product_addon_rules';
+		
+		// Get rules that target this addon
+		$rules = $wpdb->get_results( $wpdb->prepare("
+			SELECT rule_name, rule_type, actions 
+			FROM {$table_name} 
+			WHERE enabled = 1 
+			AND (
+				rule_type = 'global' 
+				OR (rule_type = 'product' AND scope_id = %d)
+			)
+			AND actions LIKE %s
+		", $product_id, '%' . $wpdb->esc_like( $addon_identifier ) . '%' ), ARRAY_A );
+		
+		$rule_targets = array();
+		foreach ( $rules as $rule ) {
+			$actions = json_decode( $rule['actions'], true );
+			if ( is_array( $actions ) ) {
+				foreach ( $actions as $action ) {
+					$target = $action['config']['action_addon'] ?? '';
+					if ( WC_Product_Addons_Addon_Identifier::names_match( $target, $addon_identifier ) ) {
+						$rule_targets[] = array(
+							'rule_name' => $rule['rule_name'],
+							'rule_type' => $rule['rule_type'],
+							'action_type' => $action['type'] ?? '',
+						);
+					}
+				}
+			}
+		}
+		
+		return $rule_targets;
 	}
 
 	/**

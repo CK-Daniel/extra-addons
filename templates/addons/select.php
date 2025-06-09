@@ -11,7 +11,11 @@ $required   = ! empty( $addon['required'] ) ? $addon['required'] : '';
 $current_value = isset( $_POST['addon-' . sanitize_title( $field_name ) ] ) ? wc_clean( $_POST[ 'addon-' . sanitize_title( $field_name ) ] ) : '';
 ?>
 <p class="form-row form-row-wide wc-pao-addon-wrap wc-pao-addon-<?php echo sanitize_title( $field_name ); ?>">
-	<select class="wc-pao-addon-field wc-pao-addon-select" name="addon-<?php echo sanitize_title( $field_name ); ?>" id="addon-<?php echo sanitize_title( $field_name ); ?>" <?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?>>
+	<select class="wc-pao-addon-field wc-pao-addon-select" 
+		name="addon-<?php echo sanitize_title( $field_name ); ?>" 
+		id="addon-<?php echo sanitize_title( $field_name ); ?>" 
+		data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"
+		<?php if ( WC_Product_Addons_Helper::is_addon_required( $addon ) ) { echo 'required'; } ?>>
 
 		<?php if ( empty( $required ) ) { ?>
 			<option value=""><?php esc_html_e( 'לא נבחר', 'woocommerce-product-addons-extra-digital' ); ?></option>

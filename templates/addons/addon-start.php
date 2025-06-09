@@ -17,6 +17,18 @@ $has_per_person_pricing = ( isset( $addon['wc_booking_person_qty_multiplier'] ) 
 $has_per_block_pricing  = ( ( isset( $addon['wc_booking_block_qty_multiplier'] ) && 1 === $addon['wc_booking_block_qty_multiplier'] ) || ( isset( $addon['wc_accommodation_booking_block_qty_multiplier'] ) && 1 === $addon['wc_accommodation_booking_block_qty_multiplier'] ) ) ? true : false;
 $product_title          = WC_Product_Addons_Helper::is_wc_gte( '3.0' ) ? $product->get_name() : $product->post_title;
 
+// Generate unified addon identifier
+if ( class_exists( 'WC_Product_Addons_Addon_Identifier' ) ) {
+	$product_id = $product->get_id();
+	$scope = isset( $addon['global_addon_id'] ) ? 'global' : 'product';
+	$addon_identifier = WC_Product_Addons_Addon_Identifier::generate_identifier( $addon, $product_id, $scope );
+	$field_name = WC_Product_Addons_Addon_Identifier::get_field_name( $addon );
+} else {
+	// Fallback
+	$addon_identifier = isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $name );
+	$field_name = $addon_identifier;
+}
+
 if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_price' !== $addon_type ) {
 	$price_prefix = 0 < $addon_price ? '+' : '';
 	$price_type   = $addon_price_type;
@@ -47,10 +59,21 @@ if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_
 
 <div class="wc-pao-addon-container container-<?=$addon['display']?> <?php echo $required ? 'wc-pao-required-addon' : ''; ?> wc-pao-addon wc-pao-addon-<?php echo sanitize_title( $name ); ?>" 
      data-product-name="<?php echo esc_attr( $product_title ); ?>"
+     data-addon-identifier="<?php echo esc_attr( $addon_identifier ); ?>"
+     data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"
      data-addon-id="<?php echo esc_attr( $addon['field_name'] ?? sanitize_title( $name ) ); ?>"
      data-addon-name="<?php echo esc_attr( $name ); ?>"
      data-addon-type="<?php echo esc_attr( $addon_type ); ?>"
-     data-addon-required="<?php echo $required ? '1' : '0'; ?>">
+     data-addon-required="<?php echo $required ? '1' : '0'; ?>"
+     <?php if ( isset( $addon['global_addon_id'] ) ) : ?>
+     data-addon-global-id="<?php echo esc_attr( $addon['global_addon_id'] ); ?>"
+     data-addon-scope="global"
+     <?php else : ?>
+     data-addon-scope="product"
+     <?php endif; ?>
+     <?php if ( isset( $addon['id'] ) ) : ?>
+     data-addon-database-id="<?php echo esc_attr( $addon['id'] ); ?>"
+     <?php endif; ?>>
 
 	<?php 
 	do_action( 'wc_product_addon_start', $addon );

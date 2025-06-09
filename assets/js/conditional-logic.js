@@ -22,26 +22,33 @@
 			console.log('🔧 Initializing WC Product Addons Conditional Logic...');
 			
 			this.form = $('form.cart');
-			this.addons = $('.product-addon, .wc-pao-addon, .wc-pao-addon-container');
 			this.cache = {};
 			this.debounceTimer = null;
 			this.evaluationQueue = [];
+			
+			// Find addons with enhanced data attributes first
+			this.addons = $('.wc-pao-addon-container[data-addon-identifier]');
+			
+			// Fall back to legacy selectors if needed
+			if (this.addons.length === 0) {
+				console.log('🔍 No enhanced addons found, trying legacy selectors...');
+				this.addons = $('.product-addon, .wc-pao-addon, .wc-pao-addon-container');
+			}
 			
 			console.log('🔍 Found elements:');
 			console.log('  - Cart form:', this.form.length);
 			console.log('  - Product addons:', this.addons.length);
 			
-			// Try alternative selectors if standard ones don't work
-			if (this.addons.length === 0) {
-				console.log('🔍 Trying alternative addon selectors...');
-				this.addons = $('.addon, .product-addon-field, .form-row');
-				console.log('  - Alternative addons found:', this.addons.length);
-			}
-			
 			if (this.form.length === 0 || this.addons.length === 0) {
 				console.warn('⚠️ Missing required elements - conditional logic disabled');
 				return;
 			}
+			
+			// Read conditional logic data
+			this.readConditionalLogicData();
+			
+			// Log addon information
+			this.logAddonInfo();
 
 			console.log('✅ Required elements found, proceeding with initialization...');
 			this.bindEvents();
@@ -86,6 +93,58 @@
 			// Listen for quantity changes
 			this.form.on('change', 'input.qty', function() {
 				self.handleQuantityChange($(this).val());
+			});
+		},
+
+		/**
+		 * Read conditional logic data from embedded JSON
+		 */
+		readConditionalLogicData: function() {
+			var self = this;
+			this.conditionalData = {};
+			
+			$('script.wc-pao-conditional-data').each(function() {
+				var script = $(this);
+				var identifier = script.data('addon-identifier');
+				
+				try {
+					var data = JSON.parse(script.html());
+					self.conditionalData[identifier] = data;
+					console.log('📋 Loaded conditional data for:', identifier, data);
+				} catch (e) {
+					console.error('Failed to parse conditional data:', e);
+				}
+			});
+		},
+
+		/**
+		 * Log addon information for debugging
+		 */
+		logAddonInfo: function() {
+			var self = this;
+			console.log('📊 Addon Information:');
+			
+			this.addons.each(function(index) {
+				var addon = $(this);
+				var info = {
+					index: index,
+					identifier: addon.data('addon-identifier'),
+					fieldName: addon.data('addon-field-name'),
+					name: addon.data('addon-name'),
+					type: addon.data('addon-type'),
+					scope: addon.data('addon-scope'),
+					globalId: addon.data('addon-global-id'),
+					required: addon.data('addon-required') === '1',
+					hasConditionalData: false
+				};
+				
+				// Check if we have conditional data for this addon
+				if (info.identifier && self.conditionalData[info.identifier]) {
+					info.hasConditionalData = true;
+					info.conditionalRules = self.conditionalData[info.identifier].rule_targets;
+				}
+				
+				console.log(`  [${index}]`, info);
 			});
 		},
 
@@ -225,19 +284,25 @@
 		getAddonIdentifier: function(addon) {
 			if (!addon || addon.length === 0) return null;
 			
-			// Priority 1: Use data-addon-identifier
-			var identifier = addon.attr('data-addon-identifier');
+			// Priority 1: Use data-addon-identifier (our enhanced attribute)
+			var identifier = addon.attr('data-addon-identifier') || addon.data('addon-identifier');
 			if (identifier) {
 				return identifier;
 			}
 			
 			// Priority 2: Use data-addon-field-name
-			var fieldName = addon.attr('data-addon-field-name');
+			var fieldName = addon.attr('data-addon-field-name') || addon.data('addon-field-name');
 			if (fieldName) {
 				return fieldName;
 			}
 			
-			// Priority 3: Fall back to name detection
+			// Priority 3: Use data-addon-id (legacy)
+			var addonId = addon.attr('data-addon-id') || addon.data('addon-id');
+			if (addonId) {
+				return addonId;
+			}
+			
+			// Priority 4: Fall back to name detection
 			return this.getAddonNameFromElement(addon);
 		},
 
@@ -451,14 +516,26 @@
 
 				console.log('  📋 Options found:', options);
 
-				addonData.push({
+				// Build comprehensive addon data
+				var addonInfo = {
 					name: addonName,
 					id: addonId, // Use consistent identifier
 					identifier: addonId,
 					display_name: addonName,
+					field_name: addon.data('addon-field-name') || addonId,
+					type: addon.data('addon-type'),
+					scope: addon.data('addon-scope') || 'product',
+					global_id: addon.data('addon-global-id'),
 					options: options,
 					current_value: self.state.selections[addonId] ? self.state.selections[addonId].value : null
-				});
+				};
+				
+				// Add any conditional logic metadata
+				if (self.conditionalData && self.conditionalData[addonId]) {
+					addonInfo.conditional_metadata = self.conditionalData[addonId];
+				}
+				
+				addonData.push(addonInfo);
 			});
 
 			console.log('📊 Addon data prepared for evaluation:', addonData);
@@ -586,9 +663,24 @@
 		handleAddonVisibility: function(addonName, visible, action) {
 			console.log(visible ? '👁️ Showing addon:' : '🙈 Hiding addon:', addonName);
 			
+			// Try original target first if available
+			if (action && action.original_target) {
+				console.log('  Original target:', action.original_target);
+			}
+			
 			var addon = this.getAddonByName(addonName);
 			if (!addon || addon.length === 0) {
 				console.warn('⚠️ Addon not found:', addonName);
+				
+				// Log available addons for debugging
+				var self = this;
+				console.log('Available addons:');
+				this.addons.each(function() {
+					var el = $(this);
+					var id = self.getAddonIdentifier(el);
+					var name = self.getAddonNameFromElement(el);
+					console.log('  - ID:', id, 'Name:', name);
+				});
 				return;
 			}
 
@@ -725,41 +817,100 @@
 			var self = this;
 			var found = null;
 			
-			// Search through all addons
+			// First try direct data attribute lookup for performance
+			found = $('[data-addon-identifier="' + identifier + '"]').first();
+			if (found.length > 0) {
+				console.log('  ✅ Found by data-addon-identifier:', identifier);
+				return found;
+			}
+			
+			// Try other data attributes
+			found = $('[data-addon-field-name="' + identifier + '"]').first();
+			if (found.length > 0) {
+				console.log('  ✅ Found by data-addon-field-name:', identifier);
+				return found;
+			}
+			
+			// Try global ID match
+			found = $('[data-addon-global-id="' + identifier + '"]').first();
+			if (found.length > 0) {
+				console.log('  ✅ Found by data-addon-global-id:', identifier);
+				return found;
+			}
+			
+			// Search through all addons with flexible matching
 			this.addons.each(function() {
 				var addon = $(this);
 				var addonId = self.getAddonIdentifier(addon);
 				var addonName = self.getAddonNameFromElement(addon);
+				var globalId = addon.data('addon-global-id');
 				
-				// Check direct identifier match
-				if (addonId === identifier) {
+				// Check various matching strategies
+				if (addonId === identifier || 
+					addonName === identifier ||
+					globalId === identifier ||
+					self.normalizeAddonName(addonName) === self.normalizeAddonName(identifier) ||
+					self.matchesAddonPattern(identifier, addonId, addonName, globalId)) {
 					found = addon;
-					console.log('  ✅ Found by identifier:', addonId);
-					return false; // Break the loop
-				}
-				
-				// Check name match (for backward compatibility)
-				if (addonName === identifier || 
-					self.normalizeAddonName(addonName) === self.normalizeAddonName(identifier)) {
-					found = addon;
-					console.log('  ✅ Found by name:', addonName);
-					return false; // Break the loop
-				}
-				
-				// Check if identifier matches any part of the addon's identifiers
-				if ((addonId && addonId.indexOf(identifier) !== -1) ||
-					(addonName && addonName.indexOf(identifier) !== -1)) {
-					found = addon;
-					console.log('  ✅ Found by partial match:', addonId || addonName);
+					console.log('  ✅ Found by flexible match:', {
+						identifier: addonId,
+						name: addonName,
+						globalId: globalId
+					});
 					return false; // Break the loop
 				}
 			});
 			
-			if (!found) {
+			if (!found || found.length === 0) {
 				console.warn('  ❌ Addon not found:', identifier);
+				// Log available addons for debugging
+				self.logAvailableAddons();
 			}
 			
 			return found;
+		},
+
+		/**
+		 * Match addon pattern for flexible identification
+		 */
+		matchesAddonPattern: function(searchTerm, addonId, addonName, globalId) {
+			// Extract base names
+			var searchBase = searchTerm.replace(/_(?:global|product|category)_\d+$/, '');
+			var idBase = addonId ? addonId.replace(/_(?:global|product|category)_\d+$/, '') : '';
+			var nameBase = addonName ? addonName.replace(/_(?:global|product|category)_\d+$/, '') : '';
+			
+			// Check if bases match
+			if ((idBase && searchBase === idBase) || 
+				(nameBase && searchBase === nameBase)) {
+				return true;
+			}
+			
+			// Check if search term is contained in any identifier
+			if ((addonId && addonId.indexOf(searchTerm) !== -1) ||
+				(addonName && addonName.indexOf(searchTerm) !== -1) ||
+				(globalId && globalId.toString().indexOf(searchTerm) !== -1)) {
+				return true;
+			}
+			
+			return false;
+		},
+
+		/**
+		 * Log available addons for debugging
+		 */
+		logAvailableAddons: function() {
+			var self = this;
+			console.log('📋 Available addons:');
+			this.addons.each(function(index) {
+				var addon = $(this);
+				console.log(`  [${index}]`, {
+					identifier: addon.data('addon-identifier'),
+					fieldName: addon.data('addon-field-name'),
+					name: addon.data('addon-name'),
+					globalId: addon.data('addon-global-id'),
+					scope: addon.data('addon-scope')
+				});
+			});
 		},
 
 		/**
