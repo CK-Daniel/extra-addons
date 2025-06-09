@@ -203,6 +203,15 @@ class WC_Product_Addons_Addon_Identifier {
 			return true;
 		}
 		
+		// Also try matching just the base name without any scope
+		// This handles cases where global rule targets "test_global_163" but addon is "test_product_67"
+		$pure_base1 = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $name1 );
+		$pure_base2 = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $name2 );
+		
+		if ( ! empty( $pure_base1 ) && ! empty( $pure_base2 ) && strcasecmp( $pure_base1, $pure_base2 ) === 0 ) {
+			return true;
+		}
+		
 		// Also try without any numeric suffixes
 		$base1_no_num = preg_replace( '/_\d+$/', '', $base1 );
 		$base2_no_num = preg_replace( '/_\d+$/', '', $base2 );

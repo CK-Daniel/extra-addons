@@ -695,6 +695,7 @@ class WC_Product_Addons_Conditional_Logic {
 		$selected_value = null;
 		
 		error_log( "Available selections: " . json_encode( array_keys( $selections ) ) );
+		error_log( "Full selections data: " . json_encode( $selections ) );
 		
 		// First try exact match
 		if ( isset( $selections[ $addon_id ] ) ) {
@@ -706,8 +707,19 @@ class WC_Product_Addons_Conditional_Logic {
 				// Try multiple matching strategies
 				$matches = false;
 				
+				// Check if selection has a name property that matches
+				$selection_name = isset( $selection['name'] ) ? $selection['name'] : '';
+				
+				// Strategy 0: Direct name match
+				if ( ! empty( $selection_name ) && 
+					 ( strcasecmp( $selection_name, $addon_id ) === 0 || 
+					   WC_Product_Addons_Addon_Identifier::names_match( $selection_name, $addon_id ) ) ) {
+					$matches = true;
+					error_log( "Matched by selection name: {$selection_name} === {$addon_id}" );
+				}
+				
 				// Strategy 1: Use identifier matching
-				if ( WC_Product_Addons_Addon_Identifier::names_match( $selection_id, $addon_id ) ) {
+				if ( ! $matches && WC_Product_Addons_Addon_Identifier::names_match( $selection_id, $addon_id ) ) {
 					$matches = true;
 				}
 				
@@ -718,6 +730,16 @@ class WC_Product_Addons_Conditional_Logic {
 				if ( strcasecmp( $base_addon_id, $base_selection_id ) === 0 ) {
 					$matches = true;
 					error_log( "Matched by base name: {$base_addon_id} === {$base_selection_id}" );
+				}
+				
+				// Strategy 2b: Extract pure base name (before scope indicator)
+				$pure_addon_id = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $addon_id );
+				$pure_selection_id = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $selection_id );
+				
+				if ( ! empty( $pure_addon_id ) && ! empty( $pure_selection_id ) && 
+					 strcasecmp( $pure_addon_id, $pure_selection_id ) === 0 ) {
+					$matches = true;
+					error_log( "Matched by pure base name: {$pure_addon_id} === {$pure_selection_id}" );
 				}
 				
 				// Strategy 3: Check if one contains the other (case insensitive)
@@ -755,6 +777,27 @@ class WC_Product_Addons_Conditional_Logic {
 			// Try with sanitized values
 			elseif ( sanitize_title( $selected_value ) === sanitize_title( $option_value ) ) {
 				$is_selected = true;
+			}
+			// Handle option value format: label-index (e.g., test-1)
+			else {
+				// Extract base value from selected value (remove -N suffix)
+				$selected_base = preg_replace( '/-\d+$/', '', $selected_value );
+				
+				// Check if option value matches the base
+				if ( $selected_base === $option_value || 
+					 strcasecmp( $selected_base, $option_value ) === 0 ||
+					 sanitize_title( $selected_base ) === sanitize_title( $option_value ) ) {
+					$is_selected = true;
+					error_log( "Matched by base value: {$selected_base} === {$option_value}" );
+				}
+				
+				// Also check if option value matches selected value without considering index
+				$option_base = preg_replace( '/-\d+$/', '', $option_value );
+				if ( $option_base === $selected_value ||
+					 strcasecmp( $option_base, $selected_value ) === 0 ) {
+					$is_selected = true;
+					error_log( "Matched option base to selected: {$option_base} === {$selected_value}" );
+				}
 			}
 		}
 		

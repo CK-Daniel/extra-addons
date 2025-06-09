@@ -230,7 +230,7 @@
 					'label text': addon.find('.wc-pao-addon-name').text().trim(),
 					'css classes': addon.attr('class'),
 					'field name': addon.find('input, select, textarea').first().attr('name'),
-					'addon html': addon[0].outerHTML.substring(0, 200) + '...',
+					'addon html': addon.length > 0 ? addon[0].outerHTML.substring(0, 200) + '...' : 'No element',
 					'final name': name
 				});
 				
@@ -382,20 +382,28 @@
 		/**
 		 * Update selection in state
 		 */
-		updateSelection: function(addonName, field) {
+		updateSelection: function(addonId, field) {
 			var value = this.getFieldValue(field);
 			var label = this.getFieldLabel(field);
 			var price = this.getFieldPrice(field);
+			var addon = field.closest('.wc-pao-addon, .product-addon, .wc-pao-addon-container');
+			var addonName = this.getAddonNameFromElement(addon);
 
 			if (value !== null) {
-				this.state.selections[addonName] = {
+				this.state.selections[addonId] = {
 					value: value,
 					label: label,
 					price: price,
-					element: field
+					element: field,
+					name: addonName, // Include the addon name for flexible matching
+					identifier: addonId,
+					scope: addon.data('addon-scope') || 'product',
+					globalId: addon.data('addon-global-id')
 				};
+				console.log('📝 Updated selection:', addonId, this.state.selections[addonId]);
 			} else {
-				delete this.state.selections[addonName];
+				delete this.state.selections[addonId];
+				console.log('🗑️ Removed selection:', addonId);
 			}
 		},
 
@@ -526,9 +534,20 @@
 					type: addon.data('addon-type'),
 					scope: addon.data('addon-scope') || 'product',
 					global_id: addon.data('addon-global-id'),
+					database_id: addon.data('addon-database-id'),
 					options: options,
 					current_value: self.state.selections[addonId] ? self.state.selections[addonId].value : null
 				};
+				
+				// Log the addon being prepared
+				console.log('📦 Addon prepared:', {
+					identifier: addonId,
+					name: addonName,
+					scope: addonInfo.scope,
+					globalId: addonInfo.global_id,
+					currentValue: addonInfo.current_value,
+					hasSelection: !!self.state.selections[addonId]
+				});
 				
 				// Add any conditional logic metadata
 				if (self.conditionalData && self.conditionalData[addonId]) {
@@ -886,14 +905,35 @@
 		 * Match addon pattern for flexible identification
 		 */
 		matchesAddonPattern: function(searchTerm, addonId, addonName, globalId) {
-			// Extract base names
+			// Extract base names (remove scope and ID suffixes)
 			var searchBase = searchTerm.replace(/_(?:global|product|category)_\d+$/, '');
 			var idBase = addonId ? addonId.replace(/_(?:global|product|category)_\d+$/, '') : '';
 			var nameBase = addonName ? addonName.replace(/_(?:global|product|category)_\d+$/, '') : '';
 			
-			// Check if bases match
-			if ((idBase && searchBase === idBase) || 
-				(nameBase && searchBase === nameBase)) {
+			console.log('  🔍 Pattern matching:', {
+				searchTerm: searchTerm,
+				searchBase: searchBase,
+				addonId: addonId,
+				idBase: idBase,
+				addonName: addonName,
+				nameBase: nameBase
+			});
+			
+			// Check if bases match (case-insensitive)
+			if ((idBase && searchBase.toLowerCase() === idBase.toLowerCase()) || 
+				(nameBase && searchBase.toLowerCase() === nameBase.toLowerCase())) {
+				console.log('    ✅ Base name match found');
+				return true;
+			}
+			
+			// Also try extracting pure base (before scope indicator)
+			var searchPure = searchTerm.replace(/^(.*?)_(?:product|global|category).*$/, '$1');
+			var idPure = addonId ? addonId.replace(/^(.*?)_(?:product|global|category).*$/, '$1') : '';
+			var namePure = addonName ? addonName.replace(/^(.*?)_(?:product|global|category).*$/, '$1') : '';
+			
+			if (searchPure && ((idPure && searchPure.toLowerCase() === idPure.toLowerCase()) ||
+				(namePure && searchPure.toLowerCase() === namePure.toLowerCase()))) {
+				console.log('    ✅ Pure base name match found');
 				return true;
 			}
 			
@@ -901,6 +941,14 @@
 			if ((addonId && addonId.indexOf(searchTerm) !== -1) ||
 				(addonName && addonName.indexOf(searchTerm) !== -1) ||
 				(globalId && globalId.toString().indexOf(searchTerm) !== -1)) {
+				console.log('    ✅ Contains match found');
+				return true;
+			}
+			
+			// Check normalized names
+			if (this.normalizeAddonName(searchBase) === this.normalizeAddonName(addonName) ||
+				this.normalizeAddonName(searchBase) === this.normalizeAddonName(idBase)) {
+				console.log('    ✅ Normalized name match found');
 				return true;
 			}
 			
@@ -940,8 +988,20 @@
 		 */
 		setAddonVisibility: function(addon, visible, animation) {
 			animation = animation || { type: 'fade', duration: 300 };
+			
+			console.log('🎬 Setting addon visibility:', {
+				addon: addon.data('addon-identifier') || addon.data('addon-name'),
+				visible: visible,
+				currentlyVisible: addon.is(':visible'),
+				animation: animation
+			});
 
 			if (visible) {
+				// Remove any display:none style first
+				if (addon.css('display') === 'none') {
+					addon.css('display', '');
+				}
+				
 				switch (animation.type) {
 					case 'slide':
 						addon.slideDown(animation.duration);
@@ -955,6 +1015,9 @@
 
 				// Enable inputs
 				addon.find('input, select, textarea').prop('disabled', false);
+				
+				// Remove hidden class if present
+				addon.removeClass('wc-pao-addon-hidden conditional-logic-hidden');
 			} else {
 				switch (animation.type) {
 					case 'slide':
@@ -969,7 +1032,13 @@
 
 				// Disable inputs to prevent validation
 				addon.find('input, select, textarea').prop('disabled', true);
+				
+				// Add hidden class
+				addon.addClass('wc-pao-addon-hidden conditional-logic-hidden');
 			}
+			
+			// Trigger event
+			addon.trigger('wc-pao-addon-visibility-changed', [visible]);
 		},
 
 		/**
