@@ -331,12 +331,23 @@
 				
 				if (name) {
 					console.log('  ✅ Found addon:', name);
-					this.originalAddons[name] = {
+					// Also store by identifier for better lookup
+					var identifier = self.getAddonIdentifier(addon);
+					var storeKey = identifier || name;
+					
+					this.originalAddons[storeKey] = {
 						element: addon,
+						name: name,
+						identifier: identifier,
 						data: addon.data() || {},
 						required: addon.find('input, select, textarea').first().prop('required') || false,
 						prices: this.extractPrices(addon) || {}
 					};
+					
+					// If identifier is different from name, also store by name
+					if (identifier && identifier !== name) {
+						this.originalAddons[name] = this.originalAddons[storeKey];
+					}
 				} else {
 					console.warn('  ❌ Addon found but no name detected:', addon.get(0));
 				}
@@ -735,8 +746,11 @@
 				});
 			}
 
+			// IMPORTANT: First reset all modifications to default state
+			this.resetAllModifications();
+
 			if (!results || !results.actions) {
-				console.log('⚠️ No actions to apply');
+				console.log('⚠️ No actions to apply - all elements reset to default');
 				return;
 			}
 
@@ -785,6 +799,82 @@
 			// Trigger update event
 			this.form.trigger('woocommerce-product-addons-rules-applied', [results]);
 			console.log('✨ All rule actions applied');
+		},
+
+		/**
+		 * Reset all modifications to default state
+		 */
+		resetAllModifications: function() {
+			console.log('🔄 Resetting all modifications to default state');
+			var self = this;
+			
+			// Reset all addon visibility
+			this.addons.each(function() {
+				var addon = $(this);
+				// Show all addons that were hidden by conditional logic
+				if (addon.hasClass('conditional-logic-hidden')) {
+					self.setAddonVisibility(addon, true);
+				}
+			});
+			
+			// Reset all option visibility
+			$('.addon-option.conditional-logic-hidden, option.conditional-logic-hidden').each(function() {
+				var option = $(this);
+				option.removeClass('conditional-logic-hidden');
+				option.show();
+				if (option.is('option')) {
+					option.prop('disabled', false);
+				} else {
+					option.find('input').prop('disabled', false);
+				}
+			});
+			
+			// Reset all prices to original values
+			var processedAddons = {};
+			for (var key in this.originalAddons) {
+				var addonData = this.originalAddons[key];
+				if (addonData && addonData.element) {
+					var elementId = addonData.element.attr('id') || addonData.identifier || addonData.name;
+					if (!processedAddons[elementId]) {
+						processedAddons[elementId] = true;
+						this.resetAddonPrices(addonData.element, addonData.prices);
+					}
+				}
+			}
+			
+			// Reset all required states
+			processedAddons = {};
+			for (var key in this.originalAddons) {
+				var addonData = this.originalAddons[key];
+				if (addonData && addonData.element) {
+					var elementId = addonData.element.attr('id') || addonData.identifier || addonData.name;
+					if (!processedAddons[elementId]) {
+						processedAddons[elementId] = true;
+						this.setAddonRequired(addonData.element, addonData.required);
+					}
+				}
+			}
+		},
+
+		/**
+		 * Reset addon prices to original values
+		 */
+		resetAddonPrices: function(addon, originalPrices) {
+			if (!originalPrices) return;
+			
+			var self = this;
+			addon.find('option, input[type="radio"], input[type="checkbox"]').each(function() {
+				var element = $(this);
+				var value = element.val();
+				if (value && originalPrices[value] !== undefined) {
+					var originalPrice = originalPrices[value];
+					element.data('price', originalPrice);
+					element.data('raw-price', originalPrice);
+					element.attr('data-price', originalPrice);
+					element.attr('data-raw-price', originalPrice);
+					self.updatePriceDisplay(element, originalPrice);
+				}
+			});
 		},
 
 		/**
@@ -1346,6 +1436,7 @@
 					console.log('    ✅ Found ' + options.length + ' matching option(s)');
 					options.forEach(function($option) {
 						console.log('      Hiding option:', $option.val(), '(' + $option.text() + ')');
+						$option.addClass('conditional-logic-hidden');
 						$option.hide();
 						$option.prop('disabled', true);
 						
@@ -1360,9 +1451,14 @@
 				}
 				
 				// For radio/checkbox inputs
-				addon.find('input[value="' + value + '"]').closest('.addon-option').hide();
-				addon.find('input[value^="' + value + '-"]').closest('.addon-option').hide();
-				addon.find('input[data-option-key="' + value + '"]').closest('.addon-option').hide();
+				addon.find('input[value="' + value + '"]').closest('.addon-option').addClass('conditional-logic-hidden').hide();
+				addon.find('input[value^="' + value + '-"]').closest('.addon-option').addClass('conditional-logic-hidden').hide();
+				addon.find('input[data-option-key="' + value + '"]').closest('.addon-option').addClass('conditional-logic-hidden').hide();
+				
+				// Disable the inputs themselves
+				addon.find('input[value="' + value + '"], input[value^="' + value + '-"], input[data-option-key="' + value + '"]')
+					.prop('disabled', true)
+					.prop('checked', false);
 				
 				// Check if select uses select2 and trigger update
 				var select = addon.find('select');
@@ -1479,7 +1575,12 @@
 					var element = $(this);
 					var val = element.val();
 					if (val) {
-						prices[val] = parseFloat(element.data('price')) || 0;
+						// Try multiple attributes to get the price
+						var price = parseFloat(element.data('price')) || 
+								   parseFloat(element.data('raw-price')) ||
+								   parseFloat(element.attr('data-price')) ||
+								   parseFloat(element.attr('data-raw-price')) || 0;
+						prices[val] = price;
 					}
 				});
 			} catch (e) {
