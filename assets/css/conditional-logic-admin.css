@@ -795,6 +795,7 @@
     color: #2271b1;
     margin-right: 10px;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .target-level:focus {
@@ -821,6 +822,51 @@
     color: white;
     border: 1px solid #2271b1;
     font-weight: 600;
+    min-width: 180px;
+    position: relative;
+}
+
+/* Add visual indicator when option level is selected */
+.action-config .target-level option[value="option"]:checked,
+.action-config .target-level:has(option[value="option"]:checked) {
+    background: #135e96;
+}
+
+/* Target level label */
+.action-config .target-level::before {
+    content: "Target:";
+    position: absolute;
+    top: -20px;
+    left: 0;
+    font-size: 11px;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Price action specific styling */
+.action-item:has(.action-type[value*="price"]) .action-config {
+    background: #fef8e7;
+    border: 1px solid #f4e4b6;
+}
+
+.action-item:has(.action-type[value*="price"]) .target-level {
+    background: #f39c12;
+    border-color: #f39c12;
+}
+
+/* Visual cue for option-level actions */
+.action-config:has(.target-level[value="option"]) .option-select {
+    border: 2px solid #2271b1;
+    background: #f0f8ff;
+    animation: highlight 0.5s ease-in-out;
+}
+
+@keyframes highlight {
+    0% { background: #f0f8ff; }
+    50% { background: #d4e9ff; }
+    100% { background: #f0f8ff; }
 }
 
 .action-config .addon-select {
