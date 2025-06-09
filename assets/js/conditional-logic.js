@@ -176,6 +176,11 @@
 			this.form.on('change', 'input.qty', function() {
 				self.handleQuantityChange($(this).val());
 			});
+			
+			// Intercept form submission to add conditional prices
+			this.form.on('submit', function(e) {
+				self.addConditionalPricesToForm();
+			});
 		},
 
 		/**
@@ -979,6 +984,8 @@
 				element.data('raw-price', newPrice);
 				element.attr('data-price', newPrice);
 				element.attr('data-raw-price', newPrice);
+				// Store conditional price for form submission
+				element.attr('data-conditional-price', newPrice);
 				self.updatePriceDisplay(element, newPrice);
 			});
 			
@@ -1683,18 +1690,46 @@
 		 * Format price
 		 */
 		formatPrice: function(price) {
-			// Use WooCommerce price format
-			if (typeof accounting !== 'undefined') {
+			// Try woocommerce-product-addons params first (most reliable)
+			if (typeof woocommerce_product_addons_params !== 'undefined') {
+				var params = woocommerce_product_addons_params;
+				
+				// Use accounting.js if available
+				if (typeof accounting !== 'undefined') {
+					return accounting.formatMoney(price, {
+						symbol: params.currency_format_symbol || '₪',
+						decimal: params.currency_format_decimal_sep || '.',
+						thousand: params.currency_format_thousand_sep || ',',
+						precision: params.currency_format_num_decimals || 2,
+						format: params.currency_format || '%s%v'
+					});
+				}
+				
+				// Manual formatting
+				var formatted = price.toFixed(params.currency_format_num_decimals || 2);
+				return params.currency_format_symbol + formatted;
+			}
+			
+			// Fallback: try woocommerce_addons_params (older versions)
+			if (typeof woocommerce_addons_params !== 'undefined') {
 				return accounting.formatMoney(price, {
-					symbol: woocommerce_addons_params.currency_symbol,
-					decimal: woocommerce_addons_params.decimal_separator,
-					thousand: woocommerce_addons_params.thousand_separator,
-					precision: woocommerce_addons_params.decimals,
-					format: woocommerce_addons_params.price_format
+					symbol: woocommerce_addons_params.currency_symbol || '₪',
+					decimal: woocommerce_addons_params.decimal_separator || '.',
+					thousand: woocommerce_addons_params.thousand_separator || ',',
+					precision: woocommerce_addons_params.decimals || 2,
+					format: woocommerce_addons_params.price_format || '%s%v'
 				});
 			}
 			
-			return woocommerce_addons_params.currency_symbol + price.toFixed(2);
+			// Last resort: try to detect from existing prices on page
+			var existingPrice = $('.amount').first().text();
+			var currencyMatch = existingPrice.match(/^([^\d\s.,]+)/);
+			if (currencyMatch && currencyMatch[1]) {
+				return currencyMatch[1] + price.toFixed(2);
+			}
+			
+			// Default fallback
+			return '₪' + price.toFixed(2);
 		},
 
 		/**
@@ -1718,6 +1753,52 @@
 			console.error('Conditional Logic Error:', message);
 			// You can implement a user-friendly error display here
 			// For now, just log it
+		},
+		
+		/**
+		 * Add conditional prices to form before submission
+		 */
+		addConditionalPricesToForm: function() {
+			var self = this;
+			
+			// Remove any existing conditional price inputs
+			this.form.find('input[name^="conditional_price_"]').remove();
+			
+			// Get all current price modifications
+			var priceModifications = {};
+			
+			// Check each addon for price modifications
+			this.addons.each(function() {
+				var addon = $(this);
+				var identifier = self.getAddonIdentifier(addon);
+				
+				if (!identifier) return;
+				
+				// Check for modified prices on options
+				addon.find('option[data-conditional-price], input[data-conditional-price]').each(function() {
+					var element = $(this);
+					var optionValue = element.val();
+					var conditionalPrice = element.attr('data-conditional-price');
+					
+					if (optionValue && conditionalPrice !== undefined) {
+						var fieldName = element.closest('select, input').attr('name');
+						if (fieldName) {
+							priceModifications[fieldName + '_' + optionValue] = conditionalPrice;
+						}
+					}
+				});
+			});
+			
+			// Add hidden inputs for each price modification
+			$.each(priceModifications, function(key, price) {
+				$('<input>').attr({
+					type: 'hidden',
+					name: 'conditional_price_' + key,
+					value: price
+				}).appendTo(self.form);
+			});
+			
+			console.log('💰 Added conditional prices to form:', priceModifications);
 		}
 	};
 

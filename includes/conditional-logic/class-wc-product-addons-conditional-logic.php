@@ -151,6 +151,9 @@ class WC_Product_Addons_Conditional_Logic {
 		add_filter( 'woocommerce_product_addons_option_price_raw', array( $this, 'modify_addon_price_raw' ), 10, 2 );
 		add_filter( 'woocommerce_product_addons_adjust_price', array( $this, 'should_adjust_cart_price' ), 10, 2 );
 		
+		// Hook to apply conditional prices from form submission
+		add_filter( 'woocommerce_product_addon_cart_item_data', array( $this, 'apply_conditional_prices_from_post' ), 20, 4 );
+		
 		// AJAX handlers
 		add_action( 'wp_ajax_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
 		add_action( 'wp_ajax_nopriv_wc_product_addons_evaluate_conditions', array( $this, 'ajax_evaluate_conditions' ) );
@@ -561,7 +564,16 @@ class WC_Product_Addons_Conditional_Logic {
 		error_log( 'Loaded rules: ' . json_encode( $rules ) );
 		
 		if ( empty( $rules ) ) {
-			wp_send_json_success( array( 'actions' => array(), 'message' => 'No rules found' ) );
+			// Return success with empty actions rather than error
+			wp_send_json_success( array( 
+				'actions' => array(), 
+				'message' => 'No rules found',
+				'debug' => array(
+					'product_id' => $product_id,
+					'addon_count' => count( $addon_data ),
+					'selection_count' => count( $selections )
+				)
+			) );
 		}
 		
 		// Build evaluation context
@@ -1584,6 +1596,57 @@ class WC_Product_Addons_Conditional_Logic {
 		// This would be populated from session or AJAX data
 		// For now, return empty array
 		return apply_filters( 'woocommerce_product_addons_cart_evaluation_context', array() );
+	}
+	
+	/**
+	 * Apply conditional prices from POST data to cart items
+	 *
+	 * @param array  $data    Cart item data from addon
+	 * @param array  $addon   Addon configuration
+	 * @param int    $product_id Product ID
+	 * @param array  $post_data POST data
+	 * @return array Modified cart item data
+	 */
+	public function apply_conditional_prices_from_post( $data, $addon, $product_id, $post_data ) {
+		// Check if we have conditional price data in POST
+		if ( ! is_array( $data ) || empty( $post_data ) ) {
+			return $data;
+		}
+		
+		// Process each cart item data entry
+		foreach ( $data as $key => $item ) {
+			if ( ! isset( $item['field_name'] ) || ! isset( $item['value'] ) ) {
+				continue;
+			}
+			
+			// Build the conditional price key
+			$field_name = 'addon-' . $item['field_name'];
+			$option_value = $item['value'];
+			
+			// Look for the value in the actual field value (for selects)
+			if ( isset( $post_data[ $field_name ] ) ) {
+				$actual_value = $post_data[ $field_name ];
+				$price_key = 'conditional_price_' . $field_name . '_' . $actual_value;
+				
+				if ( isset( $post_data[ $price_key ] ) ) {
+					$conditional_price = floatval( $post_data[ $price_key ] );
+					$data[ $key ]['price'] = $conditional_price;
+					$data[ $key ]['conditional_price_applied'] = true;
+					
+					// Log for debugging
+					if ( $this->debug_mode ) {
+						error_log( sprintf(
+							'Applied conditional price: %s = %s (was %s)',
+							$price_key,
+							$conditional_price,
+							isset( $item['price'] ) ? $item['price'] : 'not set'
+						) );
+					}
+				}
+			}
+		}
+		
+		return $data;
 	}
 }
 
