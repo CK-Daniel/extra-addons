@@ -103,13 +103,18 @@
 			this.debounceTimer = null;
 			this.evaluationQueue = [];
 			
-			// Find addons with enhanced data attributes first
+			// Find addons - try multiple selectors to support both new and legacy templates
 			this.addons = $('.wc-pao-addon-container[data-addon-identifier]');
 			
 			// Fall back to legacy selectors if needed
 			if (this.addons.length === 0) {
 				console.log('🔍 No enhanced addons found, trying legacy selectors...');
-				this.addons = $('.product-addon, .wc-pao-addon, .wc-pao-addon-container');
+				// For legacy template, look for the specific structure
+				this.addons = $('.product-addon');
+				if (this.addons.length === 0) {
+					// Try alternative selectors
+					this.addons = $('.wc-pao-addon, .wc-pao-addon-container');
+				}
 			}
 			
 			console.log('🔍 Found elements:');
@@ -229,6 +234,7 @@
 		 * Initialize state
 		 */
 		initializeState: function() {
+			var self = this;
 			this.state = {
 				selections: {},
 				product: this.getProductData(),
@@ -263,21 +269,28 @@
 					}
 				}
 				
-				// Method 3: Check wc-pao-addon-name class text
+				// Method 3: Check wc-pao-addon-name class text OR legacy addon-name class
 				if (!name) {
-					var labelText = addon.find('.wc-pao-addon-name').text();
+					var labelText = addon.find('.wc-pao-addon-name, .addon-name').text();
 					if (labelText) {
 						// Clean up the label text (remove required asterisk, etc.)
 						name = labelText.replace(/\s*\*\s*$/, '').replace(/\([^)]*\)$/, '').replace(/\s+$/, '').trim();
 					}
 				}
 				
-				// Method 4: Extract from CSS classes (e.g., wc-pao-addon-test)
+				// Method 4: Extract from CSS classes (e.g., wc-pao-addon-test or product-addon-test)
 				if (!name) {
 					var classes = addon.attr('class') || '';
+					// Try new format first
 					var match = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
 					if (match && match[1] && match[1] !== 'container') {
 						name = match[1];
+					} else {
+						// Try legacy format
+						match = classes.match(/product-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+						if (match && match[1]) {
+							name = match[1];
+						}
 					}
 				}
 				
@@ -335,23 +348,23 @@
 					var identifier = self.getAddonIdentifier(addon);
 					var storeKey = identifier || name;
 					
-					this.originalAddons[storeKey] = {
+					self.originalAddons[storeKey] = {
 						element: addon,
 						name: name,
 						identifier: identifier,
 						data: addon.data() || {},
 						required: addon.find('input, select, textarea').first().prop('required') || false,
-						prices: this.extractPrices(addon) || {}
+						prices: self.extractPrices(addon) || {}
 					};
 					
 					// If identifier is different from name, also store by name
 					if (identifier && identifier !== name) {
-						this.originalAddons[name] = this.originalAddons[storeKey];
+						self.originalAddons[name] = self.originalAddons[storeKey];
 					}
 				} else {
 					console.warn('  ❌ Addon found but no name detected:', addon.get(0));
 				}
-			}.bind(this));
+			});
 			
 			console.log('📋 Total addons cataloged:', Object.keys(this.originalAddons).length);
 			console.log('📋 Addon names found:', Object.keys(this.originalAddons));
@@ -424,8 +437,8 @@
 				return dataName;
 			}
 			
-			// Priority 2: Get from heading/label
-			var heading = addon.find('.wc-pao-addon-name, legend:first, h3:first, h4:first').first();
+			// Priority 2: Get from heading/label (including legacy .addon-name)
+			var heading = addon.find('.wc-pao-addon-name, .addon-name, legend:first, h3:first, h4:first').first();
 			if (heading.length > 0) {
 				var name = heading.text().trim().replace(/\s*\*\s*$/, '').trim();
 				if (name) {
@@ -445,8 +458,14 @@
 			
 			// Priority 4: CSS class matching
 			var classes = addon.attr('class') || '';
+			// Try new format first
 			var classMatch = classes.match(/wc-pao-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
 			if (classMatch && classMatch[1] && classMatch[1] !== 'container') {
+				return classMatch[1];
+			}
+			// Try legacy format
+			classMatch = classes.match(/product-addon-([a-zA-Z0-9_-]+)(?:\s|$)/);
+			if (classMatch && classMatch[1]) {
 				return classMatch[1];
 			}
 			
@@ -1594,8 +1613,51 @@
 		 * Get product data
 		 */
 		getProductData: function() {
+			// Try multiple ways to get the product ID
+			var productId = null;
+			
+			// Method 1: Standard add-to-cart input
+			productId = $('input[name="add-to-cart"]').val();
+			
+			// Method 2: Single add to cart button value
+			if (!productId) {
+				productId = $('.single_add_to_cart_button').val();
+			}
+			
+			// Method 3: From form action or data attributes
+			if (!productId) {
+				var form = $('form.cart');
+				if (form.length) {
+					// Try data-product_id attribute
+					productId = form.data('product_id');
+					
+					// Try to extract from form action URL
+					if (!productId) {
+						var action = form.attr('action');
+						if (action) {
+							var match = action.match(/add-to-cart=(\d+)/);
+							if (match) {
+								productId = match[1];
+							}
+						}
+					}
+				}
+			}
+			
+			// Method 4: Check variation form
+			if (!productId) {
+				productId = $('.variations_form').data('product_id');
+			}
+			
+			// Method 5: Global JS variable (often set by WooCommerce)
+			if (!productId && typeof wc_product_addons_params !== 'undefined' && wc_product_addons_params.post_id) {
+				productId = wc_product_addons_params.post_id;
+			}
+			
+			console.log('🏷️ Detected product ID:', productId);
+			
 			return {
-				id: $('input[name="add-to-cart"]').val() || $('.single_add_to_cart_button').val(),
+				id: productId,
 				price: parseFloat($('.single_variation_wrap .woocommerce-variation-price .amount').text().replace(/[^0-9.-]+/g, '')) || 
 					   parseFloat($('.summary .price .amount').first().text().replace(/[^0-9.-]+/g, ''))
 			};
