@@ -267,11 +267,11 @@ class WC_Product_Addons_Ajax_Queue {
 					
 					// Generate request ID and sequence
 					var requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-					var sequence = ++this.sequence;
+					var sequence = ++self.sequence;
 					
 					// Cancel previous requests if needed
 					if (options.cancelPrevious !== false) {
-						this.cancelPendingRequests();
+						self.cancelPendingRequests();
 					}
 					
 					// Add queue metadata
@@ -318,11 +318,11 @@ class WC_Product_Addons_Ajax_Queue {
 					};
 					
 					// Set timeout
-					options.timeout = options.timeout || this.requestTimeout;
+					options.timeout = options.timeout || self.requestTimeout;
 					
 					// Track request
 					var jqXHR = $.ajax(options);
-					this.activeRequests.set(requestId, {
+					self.activeRequests.set(requestId, {
 						id: requestId,
 						sequence: sequence,
 						jqXHR: jqXHR,
@@ -331,7 +331,7 @@ class WC_Product_Addons_Ajax_Queue {
 					});
 					
 					// Clean up old requests
-					this.cleanupStaleRequests();
+					self.cleanupStaleRequests();
 					
 					return jqXHR;
 				},
@@ -340,7 +340,8 @@ class WC_Product_Addons_Ajax_Queue {
 				 * Cancel pending requests
 				 */
 				cancelPendingRequests: function() {
-					this.activeRequests.forEach(function(request, id) {
+					var self = this;
+					self.activeRequests.forEach(function(request, id) {
 						if (!request.cancelled) {
 							request.cancelled = true;
 							request.jqXHR.abort();
@@ -353,14 +354,15 @@ class WC_Product_Addons_Ajax_Queue {
 				 * Clean up stale requests
 				 */
 				cleanupStaleRequests: function() {
+					var self = this;
 					var now = Date.now();
-					var timeout = this.requestTimeout;
+					var timeout = self.requestTimeout;
 					
-					this.activeRequests.forEach(function(request, id) {
+					self.activeRequests.forEach(function(request, id) {
 						if (now - request.timestamp > timeout) {
-							this.activeRequests.delete(id);
+							self.activeRequests.delete(id);
 						}
-					}, this);
+					});
 				},
 				
 				/**

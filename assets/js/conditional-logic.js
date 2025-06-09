@@ -464,7 +464,12 @@
 			console.log('📊 Addon data prepared for evaluation:', addonData);
 
 			// Use queue manager if available, otherwise fallback to regular AJAX
-			var ajaxMethod = $.wcPaoAjaxQueue ? $.wcPaoAjaxQueue.request : $.ajax;
+			var ajaxMethod = $.ajax;
+			if ($.wcPaoAjaxQueue && $.wcPaoAjaxQueue.request) {
+				ajaxMethod = function(options) {
+					return $.wcPaoAjaxQueue.request(options);
+				};
+			}
 			
 			// Make AJAX request to evaluate rules from database
 			ajaxMethod({
