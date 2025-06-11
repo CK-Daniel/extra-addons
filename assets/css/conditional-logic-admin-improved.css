@@ -1031,6 +1031,38 @@
     z-index: 999999;
 }
 
+/* Ensure Select2 hidden accessible elements are actually hidden */
+.select2-hidden-accessible {
+    border: 0 !important;
+    clip: rect(0 0 0 0) !important;
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    position: absolute !important;
+    width: 1px !important;
+}
+
+/* Select2 container styling in action/condition configs */
+.action-config .select2-container,
+.condition-config .select2-container {
+    min-width: 200px;
+    display: inline-block !important;
+    vertical-align: middle;
+}
+
+/* Addon select containers should be wider */
+.action-config .addon-select + .select2-container,
+.condition-config .addon-select + .select2-container {
+    min-width: 300px;
+}
+
+/* When Select2 is the only element in action config (for hide/show addon actions) */
+.action-config .select2-container:only-child {
+    min-width: 400px !important;
+    max-width: 600px;
+}
+
 /* Clear floats */
 .wc-addons-conditional-logic-wrap::after,
 .main-tabs::after {

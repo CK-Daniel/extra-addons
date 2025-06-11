@@ -487,9 +487,16 @@
             $config.html(html);
             
             // Initialize any select2 fields
-            $config.find('.addon-select, .option-select').select2({
+            $config.find('.addon-select').select2({
                 placeholder: wc_product_addons_params.i18n_select_addon,
-                allowClear: true
+                allowClear: true,
+                width: '100%'
+            });
+            
+            $config.find('.option-select').select2({
+                placeholder: wc_product_addons_params.i18n_select_option || 'Select option...',
+                allowClear: true,
+                width: '100%'
             });
             
             // Populate the addon select with current addon data
@@ -532,9 +539,16 @@
             $config.html(html);
             
             // Initialize any select2 fields
-            $config.find('.addon-select, .option-select').select2({
+            $config.find('.addon-select').select2({
                 placeholder: wc_product_addons_params.i18n_select_addon,
-                allowClear: true
+                allowClear: true,
+                width: '100%'
+            });
+            
+            $config.find('.option-select').select2({
+                placeholder: wc_product_addons_params.i18n_select_option || 'Select option...',
+                allowClear: true,
+                width: '100%'
             });
             
             // Initialize target level display if target level selector exists
