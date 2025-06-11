@@ -597,10 +597,13 @@ class WC_Product_Addons_Conditional_Logic {
 			
 			if ( $rule_conditions_met ) {
 				foreach ( $rule['actions'] as $action ) {
+					error_log( 'Processing action: ' . json_encode( $action ) );
 					$processed_action = $this->process_rule_action( $action, $context );
 					if ( $processed_action ) {
 						$actions_to_apply[] = $processed_action;
 						error_log( 'Action to apply: ' . json_encode( $processed_action ) );
+					} else {
+						error_log( 'Action processing returned null for: ' . json_encode( $action ) );
 					}
 				}
 			}
@@ -697,76 +700,55 @@ class WC_Product_Addons_Conditional_Logic {
 	}
 
 	/**
-	 * Evaluate addon selected condition
+	 * Evaluate addon selected condition - Optimized with caching
 	 */
 	private function evaluate_addon_selected_condition( $config, $context ) {
 		$addon_id = $config['condition_addon'] ?? '';
 		$option_value = $config['condition_option'] ?? '';
 		$state = $config['condition_state'] ?? 'selected';
 		
+		// Cache evaluation results for identical conditions
+		static $evaluation_cache = array();
+		$cache_key = md5( serialize( array( $addon_id, $option_value, $state, $context['selections'] ?? array() ) ) );
+		
+		if ( isset( $evaluation_cache[ $cache_key ] ) ) {
+			return $evaluation_cache[ $cache_key ];
+		}
+		
 		error_log( "Evaluating addon_selected: addon={$addon_id}, option={$option_value}, state={$state}" );
 		
 		$selections = $context['selections'] ?? array();
 		
-		// Find the addon selection by ID or name with improved matching
+		// Build selection index for fast lookups
+		static $selection_index_cache = array();
+		$selections_key = md5( serialize( $selections ) );
+		
+		if ( ! isset( $selection_index_cache[ $selections_key ] ) ) {
+			$selection_index_cache[ $selections_key ] = $this->build_selection_index( $selections );
+		}
+		
+		$selection_index = $selection_index_cache[ $selections_key ];
+		
+		// Find the addon selection using index
 		$selected_value = null;
 		
-		error_log( "Available selections: " . json_encode( array_keys( $selections ) ) );
-		error_log( "Full selections data: " . json_encode( $selections ) );
-		
-		// First try exact match
-		if ( isset( $selections[ $addon_id ] ) ) {
-			$selected_value = $selections[ $addon_id ]['value'] ?? null;
-			error_log( "Found exact match for {$addon_id}" );
+		// Try direct lookup
+		if ( isset( $selection_index[ $addon_id ] ) ) {
+			$selected_value = $selection_index[ $addon_id ]['value'] ?? null;
+			error_log( "Found exact match for {$addon_id} using index" );
 		} else {
-			// Try flexible matching
-			foreach ( $selections as $selection_id => $selection ) {
-				// Try multiple matching strategies
-				$matches = false;
-				
-				// Check if selection has a name property that matches
-				$selection_name = isset( $selection['name'] ) ? $selection['name'] : '';
-				
-				// Strategy 0: Direct name match
-				if ( ! empty( $selection_name ) && 
-					 ( strcasecmp( $selection_name, $addon_id ) === 0 || 
-					   WC_Product_Addons_Addon_Identifier::names_match( $selection_name, $addon_id ) ) ) {
-					$matches = true;
-					error_log( "Matched by selection name: {$selection_name} === {$addon_id}" );
-				}
-				
-				// Strategy 1: Use identifier matching
-				if ( ! $matches && WC_Product_Addons_Addon_Identifier::names_match( $selection_id, $addon_id ) ) {
-					$matches = true;
-				}
-				
-				// Strategy 2: Extract base name from both and compare
-				$base_addon_id = preg_replace( '/_(?:global|product|category)_\d+$/', '', $addon_id );
-				$base_selection_id = preg_replace( '/_(?:global|product|category)_\d+$/', '', $selection_id );
-				
-				if ( strcasecmp( $base_addon_id, $base_selection_id ) === 0 ) {
-					$matches = true;
-					error_log( "Matched by base name: {$base_addon_id} === {$base_selection_id}" );
-				}
-				
-				// Strategy 2b: Extract pure base name (before scope indicator)
-				$pure_addon_id = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $addon_id );
-				$pure_selection_id = preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $selection_id );
-				
-				if ( ! empty( $pure_addon_id ) && ! empty( $pure_selection_id ) && 
-					 strcasecmp( $pure_addon_id, $pure_selection_id ) === 0 ) {
-					$matches = true;
-					error_log( "Matched by pure base name: {$pure_addon_id} === {$pure_selection_id}" );
-				}
-				
-				// Strategy 3: Check if one contains the other (case insensitive)
-				if ( stripos( $addon_id, $selection_id ) !== false || stripos( $selection_id, $addon_id ) !== false ) {
-					$matches = true;
-				}
-				
-				if ( $matches ) {
-					$selected_value = $selection['value'] ?? null;
-					error_log( "Found match: {$selection_id} matches {$addon_id}" );
+			// Try variations using index
+			$variations = array(
+				strtolower( $addon_id ),
+				preg_replace( '/_(?:global|product|category)_\d+$/', '', $addon_id ),
+				preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $addon_id ),
+				WC_Product_Addons_Addon_Identifier::normalize_name( $addon_id )
+			);
+			
+			foreach ( $variations as $variation ) {
+				if ( isset( $selection_index[ $variation ] ) ) {
+					$selected_value = $selection_index[ $variation ]['value'] ?? null;
+					error_log( "Found match for {$addon_id} using variation {$variation}" );
 					break;
 				}
 			}
@@ -779,48 +761,88 @@ class WC_Product_Addons_Conditional_Logic {
 		error_log( "Selected value for {$addon_id}: " . ( $selected_value ?? 'NULL' ) );
 		error_log( "Comparing with option value: {$option_value}" );
 		
-		// Flexible value comparison
-		$is_selected = false;
+		// Flexible value comparison using optimized matching
+		$is_selected = $this->values_match( $selected_value, $option_value );
 		
-		if ( $selected_value !== null ) {
-			// Try exact match first
-			if ( $selected_value === $option_value ) {
-				$is_selected = true;
+		error_log( "Is selected: " . ( $is_selected ? 'YES' : 'NO' ) );
+		
+		$result = ( $state === 'selected' ) ? $is_selected : ! $is_selected;
+		$evaluation_cache[ $cache_key ] = $result;
+		
+		return $result;
+	}
+
+	/**
+	 * Build selection index for fast lookups
+	 */
+	private function build_selection_index( $selections ) {
+		$index = array();
+		
+		foreach ( $selections as $selection_id => $selection ) {
+			// Index by ID
+			$index[ $selection_id ] = $selection;
+			
+			// Index by name if available
+			if ( isset( $selection['name'] ) && ! empty( $selection['name'] ) ) {
+				$index[ $selection['name'] ] = $selection;
+				$index[ strtolower( $selection['name'] ) ] = $selection;
+				$index[ WC_Product_Addons_Addon_Identifier::normalize_name( $selection['name'] ) ] = $selection;
 			}
-			// Try case-insensitive match
-			elseif ( strcasecmp( $selected_value, $option_value ) === 0 ) {
-				$is_selected = true;
-			}
-			// Try with sanitized values
-			elseif ( sanitize_title( $selected_value ) === sanitize_title( $option_value ) ) {
-				$is_selected = true;
-			}
-			// Handle option value format: label-index (e.g., test-1)
-			else {
-				// Extract base value from selected value (remove -N suffix)
-				$selected_base = preg_replace( '/-\d+$/', '', $selected_value );
-				
-				// Check if option value matches the base
-				if ( $selected_base === $option_value || 
-					 strcasecmp( $selected_base, $option_value ) === 0 ||
-					 sanitize_title( $selected_base ) === sanitize_title( $option_value ) ) {
-					$is_selected = true;
-					error_log( "Matched by base value: {$selected_base} === {$option_value}" );
-				}
-				
-				// Also check if option value matches selected value without considering index
-				$option_base = preg_replace( '/-\d+$/', '', $option_value );
-				if ( $option_base === $selected_value ||
-					 strcasecmp( $option_base, $selected_value ) === 0 ) {
-					$is_selected = true;
-					error_log( "Matched option base to selected: {$option_base} === {$selected_value}" );
+			
+			// Index by variations
+			$variations = array(
+				strtolower( $selection_id ),
+				preg_replace( '/_(?:global|product|category)_\d+$/', '', $selection_id ),
+				preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $selection_id ),
+				WC_Product_Addons_Addon_Identifier::normalize_name( $selection_id )
+			);
+			
+			foreach ( $variations as $variation ) {
+				if ( $variation && ! isset( $index[ $variation ] ) ) {
+					$index[ $variation ] = $selection;
 				}
 			}
 		}
 		
-		error_log( "Is selected: " . ( $is_selected ? 'YES' : 'NO' ) );
+		return $index;
+	}
+
+	/**
+	 * Check if two values match using various strategies
+	 */
+	private function values_match( $value1, $value2 ) {
+		if ( $value1 === null || $value2 === null ) {
+			return false;
+		}
 		
-		return ( $state === 'selected' ) ? $is_selected : ! $is_selected;
+		// Exact match
+		if ( $value1 === $value2 ) {
+			return true;
+		}
+		
+		// Case-insensitive match
+		if ( strcasecmp( $value1, $value2 ) === 0 ) {
+			return true;
+		}
+		
+		// Sanitized match
+		if ( sanitize_title( $value1 ) === sanitize_title( $value2 ) ) {
+			return true;
+		}
+		
+		// Handle option value format: label-index (e.g., test-1)
+		$base1 = preg_replace( '/-\d+$/', '', $value1 );
+		$base2 = preg_replace( '/-\d+$/', '', $value2 );
+		
+		// Check if bases match
+		if ( $base1 === $value2 || $base2 === $value1 || 
+			 strcasecmp( $base1, $value2 ) === 0 || strcasecmp( $base2, $value1 ) === 0 ||
+			 strcasecmp( $base1, $base2 ) === 0 ) {
+			error_log( "Matched by base value: {$base1} / {$base2}" );
+			return true;
+		}
+		
+		return false;
 	}
 
 	/**
@@ -904,31 +926,136 @@ class WC_Product_Addons_Conditional_Logic {
 	}
 
 	/**
-	 * Resolve addon target from ID to name
+	 * Resolve addon target from ID to name - Optimized with caching
 	 */
 	private function resolve_addon_target( $addon_id, $context ) {
+		// Cache resolved targets for performance
+		static $target_cache = array();
+		$cache_key = md5( $addon_id . serialize( $context['addon_data'] ?? array() ) );
+		
+		if ( isset( $target_cache[ $cache_key ] ) ) {
+			return $target_cache[ $cache_key ];
+		}
+		
 		// Use the addon identifier helper
 		$parsed = WC_Product_Addons_Addon_Identifier::parse_identifier( $addon_id );
 		
-		// Try to find the addon in context data
+		// Build index for fast lookups if we have multiple addons
+		if ( isset( $context['addon_data'] ) && is_array( $context['addon_data'] ) && count( $context['addon_data'] ) > 3 ) {
+			$addon_index = $this->build_addon_index( $context['addon_data'] );
+			
+			// Try direct lookup in index
+			if ( isset( $addon_index[ $addon_id ] ) ) {
+				$result = $addon_index[ $addon_id ];
+				$target_cache[ $cache_key ] = $result;
+				return $result;
+			}
+			
+			// Try variations
+			$variations = array(
+				strtolower( $addon_id ),
+				preg_replace( '/_(?:global|product|category)_\d+$/', '', $addon_id ),
+				preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $addon_id ),
+				WC_Product_Addons_Addon_Identifier::normalize_name( $addon_id )
+			);
+			
+			foreach ( $variations as $variation ) {
+				if ( isset( $addon_index[ $variation ] ) ) {
+					$result = $addon_index[ $variation ];
+					$target_cache[ $cache_key ] = $result;
+					error_log( "Resolved addon target using index variation: {$addon_id} => {$result}" );
+					return $result;
+				}
+			}
+		}
+		
+		// Fallback to linear search for small datasets
 		if ( isset( $context['addon_data'] ) && is_array( $context['addon_data'] ) ) {
 			foreach ( $context['addon_data'] as $addon ) {
+				// Direct ID match
 				if ( isset( $addon['id'] ) && $addon['id'] === $addon_id ) {
-					return $addon['id']; // Return the consistent identifier
+					$target_cache[ $cache_key ] = $addon['id'];
+					return $addon['id'];
 				}
 				if ( isset( $addon['identifier'] ) && $addon['identifier'] === $addon_id ) {
+					$target_cache[ $cache_key ] = $addon['identifier'];
 					return $addon['identifier'];
 				}
+				
+				// Use the advanced matching logic from WC_Product_Addons_Addon_Identifier
+				if ( isset( $addon['id'] ) && WC_Product_Addons_Addon_Identifier::names_match( $addon['id'], $addon_id ) ) {
+					error_log( "Resolved addon target using names_match: {$addon_id} => {$addon['id']}" );
+					$target_cache[ $cache_key ] = $addon['id'];
+					return $addon['id'];
+				}
+				if ( isset( $addon['identifier'] ) && WC_Product_Addons_Addon_Identifier::names_match( $addon['identifier'], $addon_id ) ) {
+					error_log( "Resolved addon target using identifier match: {$addon_id} => {$addon['identifier']}" );
+					$target_cache[ $cache_key ] = $addon['identifier'];
+					return $addon['identifier'];
+				}
+				
 				// Check by name for backward compatibility
 				if ( isset( $addon['name'] ) && 
 					WC_Product_Addons_Addon_Identifier::names_match( $addon['name'], $addon_id ) ) {
-					return isset( $addon['id'] ) ? $addon['id'] : $addon['name'];
+					$result = isset( $addon['id'] ) ? $addon['id'] : $addon['name'];
+					$target_cache[ $cache_key ] = $result;
+					return $result;
 				}
 			}
 		}
 		
 		// Return parsed name or original ID
-		return ! empty( $parsed['name'] ) ? $parsed['name'] : $addon_id;
+		$result = ! empty( $parsed['name'] ) ? $parsed['name'] : $addon_id;
+		$target_cache[ $cache_key ] = $result;
+		return $result;
+	}
+
+	/**
+	 * Build addon index for fast lookups
+	 */
+	private function build_addon_index( $addon_data ) {
+		$index = array();
+		
+		foreach ( $addon_data as $addon ) {
+			$target_id = isset( $addon['id'] ) ? $addon['id'] : ( isset( $addon['identifier'] ) ? $addon['identifier'] : null );
+			
+			if ( ! $target_id ) {
+				continue;
+			}
+			
+			// Index by all possible identifiers
+			if ( isset( $addon['id'] ) ) {
+				$index[ $addon['id'] ] = $target_id;
+			}
+			if ( isset( $addon['identifier'] ) ) {
+				$index[ $addon['identifier'] ] = $target_id;
+			}
+			if ( isset( $addon['name'] ) ) {
+				$index[ $addon['name'] ] = $target_id;
+				$index[ strtolower( $addon['name'] ) ] = $target_id;
+				$index[ WC_Product_Addons_Addon_Identifier::normalize_name( $addon['name'] ) ] = $target_id;
+			}
+			if ( isset( $addon['field_name'] ) ) {
+				$index[ $addon['field_name'] ] = $target_id;
+			}
+			if ( isset( $addon['display_name'] ) ) {
+				$index[ $addon['display_name'] ] = $target_id;
+			}
+			
+			// Add variations
+			$base_variations = array(
+				preg_replace( '/_(?:global|product|category)_\d+$/', '', $target_id ),
+				preg_replace( '/^(.*?)_(?:product|global|category).*$/', '$1', $target_id )
+			);
+			
+			foreach ( $base_variations as $variation ) {
+				if ( $variation && $variation !== $target_id ) {
+					$index[ $variation ] = $target_id;
+				}
+			}
+		}
+		
+		return $index;
 	}
 
 	/**

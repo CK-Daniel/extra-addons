@@ -23,6 +23,30 @@ if ( class_exists( 'WC_Product_Addons_Addon_Identifier' ) ) {
 	$scope = isset( $addon['global_addon_id'] ) ? 'global' : 'product';
 	$addon_identifier = WC_Product_Addons_Addon_Identifier::generate_identifier( $addon, $product_id, $scope );
 	$field_name = WC_Product_Addons_Addon_Identifier::get_field_name( $addon );
+	
+	// Generate multiple identifiers for better matching across scopes
+	$identifiers = array();
+	
+	// 1. Base identifier (current product context)
+	$identifiers['primary'] = $addon_identifier;
+	
+	// 2. Global reference identifier if this is from a global addon
+	if ( isset( $addon['global_addon_id'] ) && isset( $addon['id'] ) ) {
+		$identifiers['global'] = sanitize_title( $name ) . '_global_' . $addon['id'];
+	}
+	
+	// 3. Category reference identifier (for category rules)
+	$product_categories = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+	if ( ! empty( $product_categories ) ) {
+		$identifiers['category'] = sanitize_title( $name ) . '_category_' . $product_categories[0];
+	}
+	
+	// 4. Product-specific identifier (always include for product rules)
+	$identifiers['product'] = sanitize_title( $name ) . '_product_' . $product_id;
+	
+	// 5. Base name only (for most flexible matching)
+	$identifiers['base'] = sanitize_title( $name );
+	
 } else {
 	// Fallback
 	$addon_identifier = isset( $addon['field_name'] ) ? $addon['field_name'] : sanitize_title( $name );
@@ -63,6 +87,7 @@ if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_
      data-addon-field-name="<?php echo esc_attr( $field_name ); ?>"
      data-addon-id="<?php echo esc_attr( $addon['field_name'] ?? sanitize_title( $name ) ); ?>"
      data-addon-name="<?php echo esc_attr( $name ); ?>"
+     data-addon-base-name="<?php echo esc_attr( strtolower( preg_replace( '/[^a-z0-9]+/i', '_', $name ) ) ); ?>"
      data-addon-type="<?php echo esc_attr( $addon_type ); ?>"
      data-addon-required="<?php echo $required ? '1' : '0'; ?>"
      <?php if ( isset( $addon['global_addon_id'] ) ) : ?>
@@ -73,6 +98,13 @@ if ( 'checkbox' !== $addon_type && 'multiple_choice' !== $addon_type && 'custom_
      <?php endif; ?>
      <?php if ( isset( $addon['id'] ) ) : ?>
      data-addon-database-id="<?php echo esc_attr( $addon['id'] ); ?>"
+     <?php endif; ?>
+     <?php if ( isset( $identifiers ) && is_array( $identifiers ) ) : ?>
+     <?php foreach ( $identifiers as $scope_type => $scope_identifier ) : ?>
+     data-addon-<?php echo esc_attr( $scope_type ); ?>-identifier="<?php echo esc_attr( $scope_identifier ); ?>"
+     <?php endforeach; ?>
+     <?php elseif ( isset( $global_identifier ) ) : ?>
+     data-addon-global-identifier="<?php echo esc_attr( $global_identifier ); ?>"
      <?php endif; ?>>
 
 	<?php 

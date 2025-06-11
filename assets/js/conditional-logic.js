@@ -11,50 +11,135 @@
 	'use strict';
 
 	/**
-	 * Option Matcher - Precise option matching system
+	 * Option Matcher - Precise option matching system with caching
 	 */
 	var OptionMatcher = {
+		// Cache for option lookups
+		optionCache: {},
+		
 		/**
-		 * Find options by rule value
+		 * Build option cache for an addon
+		 */
+		buildOptionCache: function(addon, addonId) {
+			if (!addonId) return;
+			
+			var cache = {
+				byValue: {},
+				byKey: {},
+				byLabel: {},
+				byPattern: {}
+			};
+			
+			// Cache all options
+			addon.find('option').each(function() {
+				var $option = $(this);
+				var value = $option.val();
+				var key = $option.data('option-key') || '';
+				var label = $option.data('label') || $option.text();
+				
+				if (value) {
+					// Direct value
+					cache.byValue[value] = $option;
+					
+					// By key
+					if (key) {
+						cache.byKey[key] = $option;
+					}
+					
+					// By label
+					if (label) {
+						cache.byLabel[label] = $option;
+						cache.byLabel[label.toLowerCase()] = $option;
+					}
+					
+					// Extract base value for pattern matching
+					var baseValue = value.replace(/-\d+$/, '');
+					if (baseValue !== value) {
+						if (!cache.byPattern[baseValue]) {
+							cache.byPattern[baseValue] = [];
+						}
+						cache.byPattern[baseValue].push($option);
+					}
+				}
+			});
+			
+			this.optionCache[addonId] = cache;
+		},
+		
+		/**
+		 * Find options by rule value - optimized with cache
 		 */
 		findOptions: function(addon, ruleValue) {
+			// Get addon identifier for cache
+			var addonId = addon.data('addon-identifier') || addon.attr('id');
+			
+			// Build cache if not exists
+			if (addonId && !this.optionCache[addonId]) {
+				this.buildOptionCache(addon, addonId);
+			}
+			
 			var matches = [];
+			var cache = addonId ? this.optionCache[addonId] : null;
 			
-			// Strategy 1: Exact value match
-			var exactMatch = addon.find('option[value="' + ruleValue + '"]');
-			if (exactMatch.length > 0) {
-				matches.push({ element: exactMatch, matchType: 'exact-value' });
-			}
-			
-			// Strategy 2: Match by data-option-key (sanitized label)
-			var keyMatch = addon.find('option[data-option-key="' + ruleValue + '"]');
-			if (keyMatch.length > 0) {
-				matches.push({ element: keyMatch, matchType: 'option-key' });
-			}
-			
-			// Strategy 3: Match by data-label (original label)
-			var labelMatch = addon.find('option[data-label="' + ruleValue + '"]');
-			if (labelMatch.length > 0) {
-				matches.push({ element: labelMatch, matchType: 'label' });
-			}
-			
-			// Strategy 4: Match value with -N pattern
-			var patternMatch = addon.find('option[value^="' + ruleValue + '-"]');
-			if (patternMatch.length > 0) {
-				matches.push({ element: patternMatch, matchType: 'value-pattern' });
+			if (cache) {
+				// Use cache for instant lookups
+				
+				// Exact value match
+				if (cache.byValue[ruleValue]) {
+					matches.push(cache.byValue[ruleValue]);
+				}
+				
+				// Option key match
+				if (cache.byKey[ruleValue]) {
+					matches.push(cache.byKey[ruleValue]);
+				}
+				
+				// Label match
+				if (cache.byLabel[ruleValue]) {
+					matches.push(cache.byLabel[ruleValue]);
+				}
+				
+				// Pattern match
+				if (cache.byPattern[ruleValue]) {
+					matches = matches.concat(cache.byPattern[ruleValue]);
+				}
+			} else {
+				// Fallback to DOM queries if no cache
+				
+				// Strategy 1: Exact value match
+				var exactMatch = addon.find('option[value="' + ruleValue + '"]');
+				if (exactMatch.length > 0) {
+					exactMatch.each(function() { matches.push($(this)); });
+				}
+				
+				// Strategy 2: Match by data-option-key (sanitized label)
+				var keyMatch = addon.find('option[data-option-key="' + ruleValue + '"]');
+				if (keyMatch.length > 0) {
+					keyMatch.each(function() { matches.push($(this)); });
+				}
+				
+				// Strategy 3: Match by data-label (original label)
+				var labelMatch = addon.find('option[data-label="' + ruleValue + '"]');
+				if (labelMatch.length > 0) {
+					labelMatch.each(function() { matches.push($(this)); });
+				}
+				
+				// Strategy 4: Match value with -N pattern
+				var patternMatch = addon.find('option[value^="' + ruleValue + '-"]');
+				if (patternMatch.length > 0) {
+					patternMatch.each(function() { matches.push($(this)); });
+				}
 			}
 			
 			// Remove duplicates
 			var seen = [];
 			var unique = [];
-			matches.forEach(function(match) {
-				match.element.each(function() {
-					var val = $(this).val();
-					if (seen.indexOf(val) === -1) {
-						seen.push(val);
-						unique.push($(this));
-					}
-				});
+			matches.forEach(function($option) {
+				var val = $option.val();
+				if (seen.indexOf(val) === -1) {
+					seen.push(val);
+					unique.push($option);
+				}
 			});
 			
 			return unique;
@@ -259,6 +344,9 @@
 				quantity: parseInt($('input.qty').val()) || 1
 			};
 
+			// Build addon index for ultra-fast lookups
+			this.buildAddonIndex();
+
 			// Store original addon data
 			this.originalAddons = {};
 			console.log('📝 Cataloging addons...');
@@ -384,6 +472,105 @@
 			
 			console.log('📋 Total addons cataloged:', Object.keys(this.originalAddons).length);
 			console.log('📋 Addon names found:', Object.keys(this.originalAddons));
+		},
+
+		/**
+		 * Build addon index for ultra-fast lookups
+		 */
+		buildAddonIndex: function() {
+			var self = this;
+			this.addonIndex = {};
+			
+			console.log('🏗️ Building addon index for ultra-fast lookups...');
+			
+			this.addons.each(function() {
+				var addon = $(this);
+				var element = addon[0]; // Store DOM element reference
+				
+				// Get all possible identifiers for this addon
+				var identifiers = [];
+				
+				// 1. Primary identifier
+				var primaryId = self.getAddonIdentifier(addon);
+				if (primaryId) identifiers.push(primaryId);
+				
+				// 2. Field name
+				var fieldName = addon.data('addon-field-name');
+				if (fieldName) identifiers.push(fieldName);
+				
+				// 3. Addon name
+				var addonName = self.getAddonNameFromElement(addon);
+				if (addonName) identifiers.push(addonName);
+				
+				// 4. Base name
+				var baseName = addon.data('addon-base-name');
+				if (baseName) identifiers.push(baseName);
+				
+				// 5. Global ID
+				var globalId = addon.data('addon-global-id');
+				if (globalId) identifiers.push(globalId.toString());
+				
+				// 6. Database ID
+				var dbId = addon.data('addon-database-id');
+				if (dbId) identifiers.push(dbId.toString());
+				
+				// 7. All scope-specific identifiers
+				var scopeAttrs = ['primary', 'global', 'category', 'product', 'base'];
+				scopeAttrs.forEach(function(scope) {
+					var scopeId = addon.data('addon-' + scope + '-identifier');
+					if (scopeId) identifiers.push(scopeId);
+				});
+				
+				// 8. Generate variations of each identifier
+				var variations = [];
+				identifiers.forEach(function(id) {
+					if (!id) return;
+					
+					// Original
+					variations.push(id);
+					
+					// Lowercase
+					variations.push(id.toLowerCase());
+					
+					// Without scope suffix
+					var noScope = id.replace(/_(?:global|product|category)_\d+$/, '');
+					if (noScope !== id) variations.push(noScope);
+					
+					// Pure base (before scope)
+					var pureBase = id.replace(/^(.*?)_(?:product|global|category).*$/, '$1');
+					if (pureBase !== id) variations.push(pureBase);
+					
+					// Sanitized
+					var sanitized = id.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+					variations.push(sanitized);
+				});
+				
+				// Remove duplicates and empty values
+				variations = variations.filter(function(v, i, arr) {
+					return v && arr.indexOf(v) === i;
+				});
+				
+				// Add all variations to the index
+				variations.forEach(function(key) {
+					if (!self.addonIndex[key]) {
+						self.addonIndex[key] = [];
+					}
+					// Store both jQuery object and DOM element for flexibility
+					self.addonIndex[key].push({
+						element: element,
+						$element: addon,
+						primaryId: primaryId,
+						name: addonName
+					});
+				});
+				
+				// Log indexed keys for this addon
+				if (wc_product_addons_conditional_logic.debug) {
+					console.log('  📍 Indexed addon:', addonName, 'with keys:', variations);
+				}
+			});
+			
+			console.log('✅ Addon index built with', Object.keys(this.addonIndex).length, 'lookup keys');
 		},
 
 		/**
@@ -1129,11 +1316,39 @@
 		},
 
 		/**
-		 * Get addon by identifier or name
+		 * Get addon by identifier or name - Ultra-fast indexed lookup
 		 */
 		getAddonByName: function(identifier) {
 			console.log('🔍 Looking for addon by identifier:', identifier);
 			
+			// Use the index for instant lookup
+			if (this.addonIndex) {
+				// Try direct lookup first
+				if (this.addonIndex[identifier]) {
+					console.log('  ⚡ Found instantly in index:', identifier);
+					return this.addonIndex[identifier][0].$element;
+				}
+				
+				// Try variations
+				var variations = [
+					identifier.toLowerCase(),
+					identifier.replace(/_(?:global|product|category)_\d+$/, ''),
+					identifier.replace(/^(.*?)_(?:product|global|category).*$/, '$1'),
+					identifier.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+				];
+				
+				for (var i = 0; i < variations.length; i++) {
+					if (this.addonIndex[variations[i]]) {
+						console.log('  ⚡ Found by variation in index:', variations[i]);
+						return this.addonIndex[variations[i]][0].$element;
+					}
+				}
+				
+				// If not found in index, log warning
+				console.warn('  ❌ Not found in index, falling back to slower search:', identifier);
+			}
+			
+			// Fallback to DOM search if index not available
 			var self = this;
 			var found = null;
 			
@@ -1158,12 +1373,56 @@
 				return found;
 			}
 			
+			// Try global identifier match
+			found = $('[data-addon-global-identifier="' + identifier + '"]').first();
+			if (found.length > 0) {
+				console.log('  ✅ Found by data-addon-global-identifier:', identifier);
+				return found;
+			}
+			
+			// Try base name match - extract base name from identifier
+			var baseName = identifier.replace(/_(?:global|product|category)_\d+$/, '');
+			found = $('[data-addon-base-name="' + baseName.toLowerCase() + '"]').first();
+			if (found.length > 0) {
+				console.log('  ✅ Found by data-addon-base-name:', baseName);
+				return found;
+			}
+			
+			// Try all scope-specific identifiers
+			var scopes = ['primary', 'global', 'category', 'product', 'base'];
+			for (var i = 0; i < scopes.length; i++) {
+				var scopeAttr = 'data-addon-' + scopes[i] + '-identifier';
+				found = $('[' + scopeAttr + '="' + identifier + '"]').first();
+				if (found.length > 0) {
+					console.log('  ✅ Found by ' + scopeAttr + ':', identifier);
+					return found;
+				}
+			}
+			
 			// Search through all addons with flexible matching
 			this.addons.each(function() {
 				var addon = $(this);
 				var addonId = self.getAddonIdentifier(addon);
 				var addonName = self.getAddonNameFromElement(addon);
 				var globalId = addon.data('addon-global-id');
+				
+				// Check all identifier attributes
+				var identifierAttrs = [
+					'addon-primary-identifier',
+					'addon-global-identifier', 
+					'addon-category-identifier',
+					'addon-product-identifier',
+					'addon-base-identifier'
+				];
+				
+				for (var j = 0; j < identifierAttrs.length; j++) {
+					var attrValue = addon.data(identifierAttrs[j]);
+					if (attrValue === identifier) {
+						found = addon;
+						console.log('  ✅ Found by ' + identifierAttrs[j] + ':', identifier);
+						return false; // Break the loop
+					}
+				}
 				
 				// Check various matching strategies
 				if (addonId === identifier || 
