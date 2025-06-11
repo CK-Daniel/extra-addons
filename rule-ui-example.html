@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improved Rule UI Example</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/0.9.0/css/dashicons.min.css">
+    <link rel="stylesheet" href="assets/css/conditional-logic-admin-improved.css">
+    <style>
+        body {
+            background: #f0f0f1;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            padding: 20px;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1d2327;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Improved Rule UI Layout Demo</h1>
+        
+        <!-- Example Rule Item -->
+        <div class="rule-item" data-rule-id="1" data-scope="global">
+            <div class="drag-handle" title="Drag to reorder rules">
+                <span class="dashicons dashicons-move"></span>
+            </div>
+            <div class="rule-content">
+                <div class="rule-header">
+                    <div class="rule-header-left">
+                        <h4 class="rule-title">Hide Shipping Options for Digital Products</h4>
+                        <div class="rule-meta">
+                            <span class="rule-priority" title="Rule Priority - Lower number = Higher priority">1</span>
+                            <span class="rule-scope-badge global">Global</span>
+                            <span class="rule-status active">Active</span>
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="edit-rule" title="Edit rule">
+                            <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button class="duplicate-rule" title="Duplicate rule">
+                            <span class="dashicons dashicons-admin-page"></span>
+                        </button>
+                        <button class="toggle-rule" title="Toggle rule">
+                            <span class="dashicons dashicons-visibility"></span>
+                        </button>
+                        <button class="delete-rule" title="Delete rule">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Rule Details Section -->
+                <div class="rule-details">
+                    <div class="rule-details-grid">
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Created</span>
+                            <span class="rule-detail-value">Nov 15, 2024 at 10:30 AM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Last Modified</span>
+                            <span class="rule-detail-value">Nov 20, 2024 at 2:45 PM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Conditions</span>
+                            <span class="rule-detail-value">3 conditions</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Actions</span>
+                            <span class="rule-detail-value">2 actions</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rule Summary -->
+                <div class="rule-summary">
+                    <div class="conditions-summary">
+                        <strong>IF</strong>
+                        <span>
+                            <span class="condition-tag">Product Type = Digital</span>
+                            <span class="condition-tag">Cart Total > $50</span>
+                            <span class="condition-tag">User Role = Customer</span>
+                        </span>
+                    </div>
+                    <div class="actions-summary">
+                        <strong>THEN</strong>
+                        <span>
+                            <span class="action-tag">Hide Shipping Method addon</span>
+                            <span class="action-tag">Show Digital Delivery Notice</span>
+                        </span>
+                    </div>
+                    
+                    <!-- Rule Targets -->
+                    <div class="rule-targets">
+                        <span class="rule-target-item">All Products</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Example Rule Item 2 -->
+        <div class="rule-item" data-rule-id="2" data-scope="category">
+            <div class="drag-handle" title="Drag to reorder rules">
+                <span class="dashicons dashicons-move"></span>
+            </div>
+            <div class="rule-content">
+                <div class="rule-header">
+                    <div class="rule-header-left">
+                        <h4 class="rule-title">Premium Options for VIP Customers</h4>
+                        <div class="rule-meta">
+                            <span class="rule-priority" title="Rule Priority">2</span>
+                            <span class="rule-scope-badge category">Category</span>
+                            <span class="rule-status active">Active</span>
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="edit-rule" title="Edit rule">
+                            <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button class="duplicate-rule" title="Duplicate rule">
+                            <span class="dashicons dashicons-admin-page"></span>
+                        </button>
+                        <button class="toggle-rule" title="Toggle rule">
+                            <span class="dashicons dashicons-visibility"></span>
+                        </button>
+                        <button class="delete-rule" title="Delete rule">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Rule Details Section -->
+                <div class="rule-details">
+                    <div class="rule-details-grid">
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Created</span>
+                            <span class="rule-detail-value">Oct 28, 2024 at 3:15 PM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Last Modified</span>
+                            <span class="rule-detail-value">Nov 18, 2024 at 11:20 AM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Conditions</span>
+                            <span class="rule-detail-value">2 conditions</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Actions</span>
+                            <span class="rule-detail-value">3 actions</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rule Summary -->
+                <div class="rule-summary">
+                    <div class="conditions-summary">
+                        <strong>IF</strong>
+                        <span>
+                            <span class="condition-tag">User Role = VIP</span>
+                            <span class="condition-tag">Product Category = Premium</span>
+                        </span>
+                    </div>
+                    <div class="actions-summary">
+                        <strong>THEN</strong>
+                        <span>
+                            <span class="action-tag">Show VIP Options</span>
+                            <span class="action-tag">Apply 20% Discount</span>
+                            <span class="action-tag">Enable Priority Support</span>
+                        </span>
+                    </div>
+                    
+                    <!-- Rule Targets -->
+                    <div class="rule-targets">
+                        <span class="rule-target-item">Electronics</span>
+                        <span class="rule-target-item">Accessories</span>
+                        <span class="rule-target-item">Premium Items</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Example Rule Item 3 - Inactive -->
+        <div class="rule-item" data-rule-id="3" data-scope="product">
+            <div class="drag-handle" title="Drag to reorder rules">
+                <span class="dashicons dashicons-move"></span>
+            </div>
+            <div class="rule-content">
+                <div class="rule-header">
+                    <div class="rule-header-left">
+                        <h4 class="rule-title">Seasonal Christmas Discount</h4>
+                        <div class="rule-meta">
+                            <span class="rule-priority" title="Rule Priority">10</span>
+                            <span class="rule-scope-badge product">Product</span>
+                            <span class="rule-status inactive">Inactive</span>
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="edit-rule" title="Edit rule">
+                            <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button class="duplicate-rule" title="Duplicate rule">
+                            <span class="dashicons dashicons-admin-page"></span>
+                        </button>
+                        <button class="toggle-rule" title="Toggle rule">
+                            <span class="dashicons dashicons-hidden"></span>
+                        </button>
+                        <button class="delete-rule" title="Delete rule">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Rule Details Section -->
+                <div class="rule-details">
+                    <div class="rule-details-grid">
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Created</span>
+                            <span class="rule-detail-value">Dec 1, 2023 at 9:00 AM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Last Modified</span>
+                            <span class="rule-detail-value">Dec 26, 2023 at 11:59 PM</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Conditions</span>
+                            <span class="rule-detail-value">1 condition</span>
+                        </div>
+                        <div class="rule-detail-item">
+                            <span class="rule-detail-label">Actions</span>
+                            <span class="rule-detail-value">2 actions</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rule Summary -->
+                <div class="rule-summary">
+                    <div class="conditions-summary">
+                        <strong>IF</strong>
+                        <span>
+                            <span class="condition-tag">Date Range = Dec 1-25</span>
+                        </span>
+                    </div>
+                    <div class="actions-summary">
+                        <strong>THEN</strong>
+                        <span>
+                            <span class="action-tag">Show Gift Wrap Option</span>
+                            <span class="action-tag">Apply 15% Holiday Discount</span>
+                        </span>
+                    </div>
+                    
+                    <!-- Rule Targets -->
+                    <div class="rule-targets">
+                        <span class="rule-target-item">Christmas Ornaments Set</span>
+                        <span class="rule-target-item">Holiday Gift Bundle</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

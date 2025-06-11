@@ -259,35 +259,65 @@ if ( ! defined( 'ABSPATH' ) ) {
         </div>
         <div class="rule-content">
             <div class="rule-header">
-                <h4 class="rule-title">{rule_name}</h4>
-                <div class="rule-meta">
-                    <span class="rule-priority" title="<?php esc_attr_e( 'Rule Priority', 'woocommerce-product-addons' ); ?>">#{priority}</span>
-                    <span class="rule-scope-badge {scope}">{scope_label}</span>
-                <span class="rule-status {status}">{status_label}</span>
+                <div class="rule-header-left">
+                    <h4 class="rule-title">{rule_name}</h4>
+                    <div class="rule-meta">
+                        <span class="rule-priority" title="<?php esc_attr_e( 'Rule Priority - Lower number = Higher priority', 'woocommerce-product-addons' ); ?>">{priority}</span>
+                        <span class="rule-scope-badge {scope}">{scope_label}</span>
+                        <span class="rule-status {status}">{status_label}</span>
+                    </div>
+                </div>
+                <div class="rule-actions">
+                    <button class="edit-rule" title="<?php esc_attr_e( 'Edit rule', 'woocommerce-product-addons' ); ?>">
+                        <span class="dashicons dashicons-edit"></span>
+                    </button>
+                    <button class="duplicate-rule" title="<?php esc_attr_e( 'Duplicate rule', 'woocommerce-product-addons' ); ?>">
+                        <span class="dashicons dashicons-admin-page"></span>
+                    </button>
+                    <button class="toggle-rule" title="<?php esc_attr_e( 'Toggle rule', 'woocommerce-product-addons' ); ?>">
+                        <span class="dashicons dashicons-{toggle_icon}"></span>
+                    </button>
+                    <button class="delete-rule" title="<?php esc_attr_e( 'Delete rule', 'woocommerce-product-addons' ); ?>">
+                        <span class="dashicons dashicons-trash"></span>
+                    </button>
+                </div>
             </div>
-            <div class="rule-actions">
-                <button class="edit-rule" title="<?php esc_attr_e( 'Edit rule', 'woocommerce-product-addons' ); ?>">
-                    <span class="dashicons dashicons-edit"></span>
-                </button>
-                <button class="duplicate-rule" title="<?php esc_attr_e( 'Duplicate rule', 'woocommerce-product-addons' ); ?>">
-                    <span class="dashicons dashicons-admin-page"></span>
-                </button>
-                <button class="toggle-rule" title="<?php esc_attr_e( 'Toggle rule', 'woocommerce-product-addons' ); ?>">
-                    <span class="dashicons dashicons-{toggle_icon}"></span>
-                </button>
-                <button class="delete-rule" title="<?php esc_attr_e( 'Delete rule', 'woocommerce-product-addons' ); ?>">
-                    <span class="dashicons dashicons-trash"></span>
-                </button>
+            
+            <!-- Rule Details Section -->
+            <div class="rule-details">
+                <div class="rule-details-grid">
+                    <div class="rule-detail-item">
+                        <span class="rule-detail-label"><?php esc_html_e( 'Created', 'woocommerce-product-addons' ); ?></span>
+                        <span class="rule-detail-value">{created_date}</span>
+                    </div>
+                    <div class="rule-detail-item">
+                        <span class="rule-detail-label"><?php esc_html_e( 'Last Modified', 'woocommerce-product-addons' ); ?></span>
+                        <span class="rule-detail-value">{modified_date}</span>
+                    </div>
+                    <div class="rule-detail-item">
+                        <span class="rule-detail-label"><?php esc_html_e( 'Conditions', 'woocommerce-product-addons' ); ?></span>
+                        <span class="rule-detail-value">{conditions_count} <?php esc_html_e( 'conditions', 'woocommerce-product-addons' ); ?></span>
+                    </div>
+                    <div class="rule-detail-item">
+                        <span class="rule-detail-label"><?php esc_html_e( 'Actions', 'woocommerce-product-addons' ); ?></span>
+                        <span class="rule-detail-value">{actions_count} <?php esc_html_e( 'actions', 'woocommerce-product-addons' ); ?></span>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Rule Summary -->
             <div class="rule-summary">
                 <div class="conditions-summary">
-                    <strong><?php esc_html_e( 'IF:', 'woocommerce-product-addons' ); ?></strong>
+                    <strong><?php esc_html_e( 'IF', 'woocommerce-product-addons' ); ?></strong>
                     <span>{conditions_summary}</span>
                 </div>
                 <div class="actions-summary">
-                    <strong><?php esc_html_e( 'THEN:', 'woocommerce-product-addons' ); ?></strong>
+                    <strong><?php esc_html_e( 'THEN', 'woocommerce-product-addons' ); ?></strong>
                     <span>{actions_summary}</span>
                 </div>
+                
+                <!-- Rule Targets -->
+                {rule_targets}
             </div>
         </div>
     </div>
