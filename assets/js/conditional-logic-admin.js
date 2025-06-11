@@ -182,13 +182,13 @@
             // Category search
             $('.wc-category-search').select2({
                 ajax: {
-                    url: wc_product_addons_conditional_logic.ajax_url || wc_product_addons_params.ajax_url,
+                    url: wc_product_addons_params.ajax_url,
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
                         return {
                             action: 'wc_product_addons_search_categories',
-                            security: wc_product_addons_conditional_logic.nonce || wc_product_addons_params.nonce,
+                            security: wc_product_addons_params.search_categories_nonce,
                             term: params.term
                         };
                     },
@@ -208,13 +208,13 @@
             // Product search
             $('.wc-product-search').select2({
                 ajax: {
-                    url: wc_product_addons_conditional_logic.ajax_url || wc_product_addons_params.ajax_url,
+                    url: wc_product_addons_params.ajax_url,
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
                         return {
                             action: 'wc_product_addons_search_products',
-                            security: wc_product_addons_conditional_logic.nonce || wc_product_addons_params.nonce,
+                            security: wc_product_addons_params.search_products_nonce,
                             term: params.term
                         };
                     },
