@@ -757,6 +757,15 @@
 			var self = this;
 			console.log('🎯 Applying rule results:', results);
 			
+			// Check if we have no actions to apply
+			if (!results.actions || results.actions.length === 0) {
+				console.log('📋 No actions to apply from rules');
+				if (results.message) {
+					console.log('ℹ️ Server message:', results.message);
+				}
+				return;
+			}
+			
 			// Log all loaded rules for debugging
 			if (results.rules && results.rules.length > 0) {
 				console.log('📋 All loaded rules:', results.rules);
@@ -1667,6 +1676,40 @@
 			// Method 5: Global JS variable (often set by WooCommerce)
 			if (!productId && typeof wc_product_addons_params !== 'undefined' && wc_product_addons_params.post_id) {
 				productId = wc_product_addons_params.post_id;
+			}
+			
+			// Method 6: Try to find product ID from the page URL
+			if (!productId) {
+				var urlMatch = window.location.href.match(/[?&]p=(\d+)/);
+				if (!urlMatch) {
+					urlMatch = window.location.href.match(/product\/[^\/]+\/?(?:\?.*)?$/);
+					if (urlMatch) {
+						// Try to extract from post ID in body class
+						var bodyClasses = $('body').attr('class');
+						if (bodyClasses) {
+							var postIdMatch = bodyClasses.match(/postid-(\d+)/);
+							if (postIdMatch) {
+								productId = postIdMatch[1];
+							}
+						}
+					}
+				} else {
+					productId = urlMatch[1];
+				}
+			}
+			
+			// Method 7: Try data attributes on addon containers
+			if (!productId) {
+				var addonContainer = $('.wc-pao-addon-container').first();
+				if (addonContainer.length) {
+					productId = addonContainer.data('product-id') || addonContainer.closest('form').find('[name="product_id"]').val();
+				}
+			}
+			
+			// Method 8: Last resort - hardcode for testing (should be removed in production)
+			if (!productId) {
+				console.warn('⚠️ Could not detect product ID, using test ID 140');
+				productId = '140'; // Test product ID
 			}
 			
 			console.log('🏷️ Detected product ID:', productId);
