@@ -136,10 +136,17 @@
 			this.bindEvents();
 			this.initializeState();
 			
+			// Mark form as initialized to prevent duplicate initialization
+			this.form.data('conditional-logic-initialized', true);
+			
 			// Wait a bit for DOM to be fully ready, then evaluate
-			setTimeout(() => {
-				this.evaluateAllConditions();
-			}, 100);
+			// Only run once to prevent multiple evaluations
+			if (!this.initialEvaluationDone) {
+				this.initialEvaluationDone = true;
+				setTimeout(() => {
+					this.evaluateAllConditions();
+				}, 100);
+			}
 		},
 
 		/**
@@ -596,7 +603,8 @@
 		 */
 		debounceEvaluation: function(delay) {
 			clearTimeout(this.debounceTimer);
-			delay = delay || 300;
+			// Reduce delay to 50ms for immediate response
+			delay = delay || 50;
 			
 			this.debounceTimer = setTimeout(function() {
 				this.evaluateAllConditions();
@@ -612,8 +620,8 @@
 			console.log('🔄 Starting conditional logic evaluation...');
 			console.log('Current state:', this.state);
 
-			// Show loading state
-			this.showLoading();
+			// Skip loading state for immediate response
+			// this.showLoading();
 
 			// Prepare addon data for evaluation
 			var addonData = [];
@@ -729,7 +737,7 @@
 						console.error('❌ Rule evaluation failed:', response.data);
 						self.showError(response.data.message || 'Rule evaluation failed');
 					}
-					self.hideLoading();
+					// self.hideLoading();
 				},
 				error: function(xhr, status, error) {
 					// Ignore aborted requests (from cancellation)
@@ -737,7 +745,7 @@
 						console.error('💥 AJAX error during rule evaluation:', xhr, status, error);
 						self.showError('Network error during rule evaluation');
 					}
-					self.hideLoading();
+					// self.hideLoading();
 				}
 			});
 		},
@@ -1838,24 +1846,40 @@
 		return true;
 	}
 
+	// Track initialization state
+	var isInitialized = false;
+	
 	// Try on document ready
 	$(document).ready(function() {
 		console.log('📄 Document ready - attempting initialization...');
+		
+		// Prevent multiple initializations
+		if (isInitialized) {
+			console.log('⚠️ Already initialized, skipping...');
+			return;
+		}
+		
 		if (!initializeConditionalLogic()) {
 			// If initialization failed, try again after a delay
 			console.log('⏰ Retrying initialization in 500ms...');
 			setTimeout(function() {
-				initializeConditionalLogic();
+				if (!isInitialized) {
+					initializeConditionalLogic();
+				}
 			}, 500);
+		} else {
+			isInitialized = true;
 		}
 	});
 
 	// Also try when window is fully loaded
 	$(window).on('load', function() {
 		console.log('🌐 Window loaded - checking if conditional logic is initialized...');
-		if (!WC_Product_Addons_Conditional_Logic.form || WC_Product_Addons_Conditional_Logic.form.length === 0) {
+		if (!isInitialized && (!WC_Product_Addons_Conditional_Logic.form || WC_Product_Addons_Conditional_Logic.form.length === 0)) {
 			console.log('⏰ Retrying initialization after window load...');
-			initializeConditionalLogic();
+			if (initializeConditionalLogic()) {
+				isInitialized = true;
+			}
 		}
 	});
 

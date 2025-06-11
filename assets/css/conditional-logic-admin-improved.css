@@ -366,34 +366,44 @@
 .action-item {
     background: #fafafa;
     border: 1px solid #e2e4e7;
-    border-radius: 4px;
-    padding: 15px;
-    margin-bottom: 10px;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 12px;
     position: relative;
+    transition: all 0.2s ease;
+}
+
+.condition-item:hover,
+.action-item:hover {
+    background: #f8f8f8;
+    border-color: #c3c4c7;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .condition-row,
 .action-row {
     display: grid;
-    grid-template-columns: 250px 1fr auto;
-    gap: 15px;
-    align-items: start;
+    grid-template-columns: 220px 1fr 36px;
+    gap: 16px;
+    align-items: center;
 }
 
 .condition-type,
 .action-type {
     width: 100%;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: 1px solid #8c8f94;
     border-radius: 4px;
     font-size: 14px;
     background: #fff;
+    font-weight: 500;
+    color: #2c3338;
 }
 
 .condition-config,
 .action-config {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
     flex-wrap: wrap;
 }
@@ -435,22 +445,27 @@
 /* Remove Buttons */
 .remove-condition,
 .remove-action {
-    background: #d63638;
-    color: #fff;
-    border: none;
-    border-radius: 2px;
-    width: 28px;
-    height: 28px;
+    background: #fff;
+    color: #d63638;
+    border: 1px solid #d63638;
+    border-radius: 4px;
+    width: 36px;
+    height: 36px;
     padding: 0;
-    font-size: 16px;
-    line-height: 26px;
+    font-size: 20px;
+    line-height: 34px;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .remove-condition:hover,
 .remove-action:hover {
-    background: #a02222;
+    background: #d63638;
+    color: #fff;
+    transform: scale(1.05);
 }
 
 /* Group Controls */
@@ -1008,23 +1023,6 @@
     }
 }
 
-/* Target level selector for price actions */
-.action-config .target-level {
-    min-width: 180px;
-    background: #2271b1;
-    color: white;
-    border: 1px solid #2271b1;
-    font-weight: 600;
-}
-
-.action-config .target-level option {
-    background: white;
-    color: #2c3338;
-}
-
-.action-config .price-input {
-    width: 120px;
-}
 
 /* Fix Select2 dropdown z-index */
 .select2-dropdown {
@@ -1051,6 +1049,30 @@
     vertical-align: middle;
 }
 
+/* Select2 styling improvements */
+.action-config .select2-container .select2-selection--single,
+.condition-config .select2-container .select2-selection--single {
+    height: 40px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.action-config .select2-container .select2-selection__rendered,
+.condition-config .select2-container .select2-selection__rendered {
+    line-height: 38px;
+    padding-left: 12px;
+    padding-right: 32px;
+    color: #2c3338;
+}
+
+.action-config .select2-container .select2-selection__arrow,
+.condition-config .select2-container .select2-selection__arrow {
+    height: 38px;
+    right: 8px;
+}
+
 /* Addon select containers should be wider */
 .action-config .addon-select + .select2-container,
 .condition-config .addon-select + .select2-container {
@@ -1061,6 +1083,45 @@
 .action-config .select2-container:only-child {
     min-width: 400px !important;
     max-width: 600px;
+    flex: 1;
+}
+
+/* Target level selector styling */
+.action-config .target-level {
+    min-width: 160px;
+    padding: 10px 14px;
+    height: 40px;
+    background: #2271b1;
+    color: white;
+    border: 1px solid #2271b1;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.action-config .target-level option {
+    background: white;
+    color: #2c3338;
+}
+
+/* Price and text inputs in action config */
+.action-config input[type="number"],
+.action-config input[type="text"],
+.action-config textarea {
+    padding: 10px 14px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    background: #fff;
+    min-height: 40px;
+}
+
+.action-config .price-input {
+    width: 140px;
+}
+
+.action-config textarea {
+    min-width: 300px;
+    resize: vertical;
 }
 
 /* Clear floats */
