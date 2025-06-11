@@ -1,0 +1,65 @@
+/**
+ * WooCommerce Product Add-ons Conditional Logic Frontend Styles
+ */
+
+/* Hide addons marked as hidden by conditional logic */
+.wc-pao-addon-hidden,
+.conditional-logic-hidden {
+    display: none !important;
+}
+
+/* Hide specific options marked as hidden */
+.addon-option.conditional-logic-hidden,
+option.conditional-logic-hidden {
+    display: none !important;
+}
+
+/* Ensure disabled options are visually distinct */
+option:disabled {
+    opacity: 0.5;
+}
+
+/* Smooth transitions for visibility changes */
+.wc-pao-addon-container {
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Conditional messages */
+.addon-conditional-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.addon-conditional-message.message-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.addon-conditional-message.message-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.addon-conditional-message.message-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Loading state */
+form.cart.processing {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Required addon indicator */
+.required-addon .addon-name .required,
+.required-addon .wc-pao-addon-name .required {
+    color: #ff0000;
+    font-weight: bold;
+    margin-left: 5px;
+}

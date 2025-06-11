@@ -139,13 +139,13 @@
 			// Mark form as initialized to prevent duplicate initialization
 			this.form.data('conditional-logic-initialized', true);
 			
-			// Wait a bit for DOM to be fully ready, then evaluate
+			// Wait for DOM and other scripts to be fully ready before first evaluation
 			// Only run once to prevent multiple evaluations
 			if (!this.initialEvaluationDone) {
 				this.initialEvaluationDone = true;
-				setTimeout(() => {
-					this.evaluateAllConditions();
-				}, 100);
+				// Skip initial evaluation - let it trigger on first user interaction
+				// This prevents multiple evaluations on page load
+				console.log('✅ Conditional logic ready - waiting for user interaction');
 			}
 		},
 
@@ -169,9 +169,13 @@
 				self.handleFieldInput($(this));
 			});
 
-			// Listen for addon update event
+			// Listen for addon update event but ignore during initialization
 			this.form.on('woocommerce-product-addons-update', function() {
-				self.evaluateAllConditions();
+				// Skip during initialization to prevent multiple evaluations
+				if (self.initialEvaluationDone && !self.isEvaluating) {
+					console.log('📢 Addon update event - evaluating conditions');
+					self.evaluateAllConditions();
+				}
 			});
 
 			// Listen for variation changes
@@ -404,8 +408,8 @@
 					this.state.addonNames[addonId] = addonName;
 				}
 				
-				// Debounce evaluation
-				this.debounceEvaluation();
+				// Evaluate immediately without debounce for instant response
+				this.evaluateAllConditions();
 			}
 		},
 
@@ -603,8 +607,8 @@
 		 */
 		debounceEvaluation: function(delay) {
 			clearTimeout(this.debounceTimer);
-			// Reduce delay to 50ms for immediate response
-			delay = delay || 50;
+			// Increased delay to prevent rapid evaluations and outdated requests
+			delay = delay || 200;
 			
 			this.debounceTimer = setTimeout(function() {
 				this.evaluateAllConditions();
@@ -617,8 +621,24 @@
 		evaluateAllConditions: function() {
 			var self = this;
 			
+			// Prevent overlapping evaluations
+			if (this.isEvaluating) {
+				console.log('⏸️ Evaluation already in progress, skipping...');
+				return;
+			}
+			
+			this.isEvaluating = true;
 			console.log('🔄 Starting conditional logic evaluation...');
 			console.log('Current state:', this.state);
+			
+			// Set a timeout to reset the flag in case something goes wrong
+			var self = this;
+			this.evaluationResetTimeout = setTimeout(function() {
+				if (self.isEvaluating) {
+					console.warn('⚠️ Evaluation timeout - resetting flag');
+					self.isEvaluating = false;
+				}
+			}, 3000); // 3 second timeout
 
 			// Skip loading state for immediate response
 			// this.showLoading();
@@ -732,12 +752,28 @@
 						// Handle outdated request silently
 						if (response.data && response.data.code === 'outdated_request') {
 							console.log('⏭️ Skipping outdated request response');
-							return; // Don't hide loading or show error
+							// Still need to reset the flag
+							clearTimeout(self.evaluationResetTimeout);
+							self.isEvaluating = false;
+							return;
 						}
+						
+						// Check if the error is just "Invalid product ID" which might be OK for testing
+						if (response.data === 'Invalid product ID') {
+							console.warn('⚠️ Invalid product ID - rules cannot be evaluated');
+							clearTimeout(self.evaluationResetTimeout);
+							self.isEvaluating = false;
+							return;
+						}
+						
 						console.error('❌ Rule evaluation failed:', response.data);
-						self.showError(response.data.message || 'Rule evaluation failed');
+						if (response.data && response.data.message) {
+							self.showError(response.data.message);
+						}
 					}
 					// self.hideLoading();
+					clearTimeout(self.evaluationResetTimeout);
+					self.isEvaluating = false;
 				},
 				error: function(xhr, status, error) {
 					// Ignore aborted requests (from cancellation)
@@ -746,6 +782,8 @@
 						self.showError('Network error during rule evaluation');
 					}
 					// self.hideLoading();
+					clearTimeout(self.evaluationResetTimeout);
+					self.isEvaluating = false;
 				}
 			});
 		},
@@ -849,17 +887,18 @@
 			console.log('🔄 Resetting all modifications to default state');
 			var self = this;
 			
-			// Reset all addon visibility
+			// Reset all addon visibility - show all addons by default
 			this.addons.each(function() {
 				var addon = $(this);
-				// Show all addons that were hidden by conditional logic
-				if (addon.hasClass('conditional-logic-hidden')) {
-					self.setAddonVisibility(addon, true);
-				}
+				// Remove all conditional logic classes and show the addon
+				addon.removeClass('conditional-logic-hidden wc-pao-addon-hidden');
+				addon.show();
+				// Re-enable all inputs
+				addon.find('input, select, textarea').prop('disabled', false);
 			});
 			
 			// Reset all option visibility
-			$('.addon-option.conditional-logic-hidden, option.conditional-logic-hidden').each(function() {
+			$('.addon-option.conditional-logic-hidden, option.conditional-logic-hidden, .conditional-logic-hidden').each(function() {
 				var option = $(this);
 				option.removeClass('conditional-logic-hidden');
 				option.show();
@@ -874,7 +913,7 @@
 			var processedAddons = {};
 			for (var key in this.originalAddons) {
 				var addonData = this.originalAddons[key];
-				if (addonData && addonData.element) {
+				if (addonData && addonData.element && addonData.element.length > 0) {
 					var elementId = addonData.element.attr('id') || addonData.identifier || addonData.name;
 					if (!processedAddons[elementId]) {
 						processedAddons[elementId] = true;
@@ -883,11 +922,11 @@
 				}
 			}
 			
-			// Reset all required states
+			// Reset all required states to original
 			processedAddons = {};
 			for (var key in this.originalAddons) {
 				var addonData = this.originalAddons[key];
-				if (addonData && addonData.element) {
+				if (addonData && addonData.element && addonData.element.length > 0) {
 					var elementId = addonData.element.attr('id') || addonData.identifier || addonData.name;
 					if (!processedAddons[elementId]) {
 						processedAddons[elementId] = true;
@@ -895,6 +934,9 @@
 					}
 				}
 			}
+			
+			// Remove any conditional messages
+			$('.addon-conditional-message').remove();
 		},
 
 		/**
@@ -1234,58 +1276,46 @@
 		 * Set addon visibility
 		 */
 		setAddonVisibility: function(addon, visible, animation) {
-			animation = animation || { type: 'fade', duration: 300 };
+			// Use instant visibility change for better UX
+			animation = animation || { type: 'instant', duration: 0 };
 			
 			console.log('🎬 Setting addon visibility:', {
 				addon: addon.data('addon-identifier') || addon.data('addon-name'),
 				visible: visible,
-				currentlyVisible: addon.is(':visible'),
-				animation: animation
+				currentlyVisible: addon.is(':visible')
 			});
 
 			if (visible) {
-				// Remove any display:none style first
-				if (addon.css('display') === 'none') {
-					addon.css('display', '');
-				}
+				// Remove hidden classes and show immediately
+				addon.removeClass('wc-pao-addon-hidden conditional-logic-hidden');
+				addon.show();
 				
-				switch (animation.type) {
-					case 'slide':
-						addon.slideDown(animation.duration);
-						break;
-					case 'slide_fade':
-						addon.css('opacity', 0).slideDown(animation.duration).animate({ opacity: 1 }, animation.duration);
-						break;
-					default:
-						addon.fadeIn(animation.duration);
-				}
-
 				// Enable inputs
 				addon.find('input, select, textarea').prop('disabled', false);
 				
-				// Remove hidden class if present
-				addon.removeClass('wc-pao-addon-hidden conditional-logic-hidden');
+				// Clear any inline display styles
+				addon.css('display', '');
 			} else {
-				switch (animation.type) {
-					case 'slide':
-						addon.slideUp(animation.duration);
-						break;
-					case 'slide_fade':
-						addon.animate({ opacity: 0 }, animation.duration / 2).slideUp(animation.duration / 2);
-						break;
-					default:
-						addon.fadeOut(animation.duration);
-				}
-
+				// Hide immediately
+				addon.hide();
+				
+				// Add hidden classes for CSS targeting
+				addon.addClass('wc-pao-addon-hidden conditional-logic-hidden');
+				
 				// Disable inputs to prevent validation
 				addon.find('input, select, textarea').prop('disabled', true);
 				
-				// Add hidden class
-				addon.addClass('wc-pao-addon-hidden conditional-logic-hidden');
+				// Clear any selected values
+				addon.find('select').val('').trigger('change');
+				addon.find('input[type="radio"], input[type="checkbox"]').prop('checked', false);
+				addon.find('input[type="text"], textarea').val('');
 			}
 			
 			// Trigger event
 			addon.trigger('wc-pao-addon-visibility-changed', [visible]);
+			
+			// Trigger form update
+			this.form.trigger('woocommerce-product-addons-update');
 		},
 
 		/**

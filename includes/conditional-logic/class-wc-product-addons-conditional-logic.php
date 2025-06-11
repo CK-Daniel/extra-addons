@@ -1409,6 +1409,14 @@ class WC_Product_Addons_Conditional_Logic {
 				true
 			);
 			
+			// Enqueue frontend CSS
+			wp_enqueue_style(
+				'wc-product-addons-conditional-logic-frontend',
+				WC_PRODUCT_ADDONS_PLUGIN_URL . '/assets/css/conditional-logic-frontend.css',
+				array(),
+				WC_PRODUCT_ADDONS_VERSION
+			);
+			
 			wp_localize_script( 'wc-product-addons-conditional-logic', 'wc_product_addons_conditional_logic', array(
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'wc-product-addons-conditional-logic' ),
