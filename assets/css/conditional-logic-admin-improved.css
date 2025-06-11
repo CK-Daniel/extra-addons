@@ -403,6 +403,13 @@
     flex: 0 1 auto;
 }
 
+/* When action config only has addon selector (for show/hide addon actions) */
+.action-config:has(.addon-select:only-child) .addon-select,
+.action-config:has(.addon-select:first-child:last-child) .addon-select {
+    min-width: 400px;
+    max-width: 600px;
+}
+
 .condition-config select,
 .action-config select,
 .condition-config input,

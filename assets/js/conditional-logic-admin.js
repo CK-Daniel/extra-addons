@@ -674,7 +674,9 @@
         
         // Action configuration templates
         getAddonVisibilityActionConfig: function() {
-            return this.buildAddonSelectHtml(true, true);
+            // For show/hide addon actions, only show the addon selector
+            // No target level or option selector needed as these actions apply to entire addons
+            return this.buildAddonSelectHtml(false, false);
         },
         
         getOptionVisibilityActionConfig: function() {

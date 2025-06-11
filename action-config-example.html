@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Configuration Examples</title>
+    <link rel="stylesheet" href="assets/css/conditional-logic-admin-improved.css">
+    <style>
+        body {
+            background: #f0f0f1;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1d2327;
+        }
+        .example-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f6f7f7;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Action Configuration Examples</h1>
+        
+        <div class="example-section">
+            <h2>1. Hide/Show Add-on Action (Simplified - Only Addon Selector)</h2>
+            <p>These actions apply to entire add-ons, so only the addon selector is shown:</p>
+            
+            <div class="action-item">
+                <div class="action-row">
+                    <select class="action-type">
+                        <option value="hide_addon" selected>Hide Add-on</option>
+                    </select>
+                    
+                    <div class="action-config">
+                        <select class="addon-select" style="min-width: 400px;">
+                            <option value="">Select add-on...</option>
+                            <optgroup label="🌍 Global Add-ons">
+                                <option value="test_global_163">Test (Add-ons Group #1)</option>
+                                <option value="example1_global_173">Example1 (Add-ons Group #2)</option>
+                            </optgroup>
+                            <optgroup label="📦 Product Add-ons">
+                                <option value="shipping_product_42">Shipping Options (Product: T-Shirt)</option>
+                                <option value="gift_wrap_product_38">Gift Wrapping (Product: Book)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="remove-action">×</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="example-section">
+            <h2>2. Hide/Show Option Action (With Target Level)</h2>
+            <p>These actions can target specific options within add-ons:</p>
+            
+            <div class="action-item">
+                <div class="action-row">
+                    <select class="action-type">
+                        <option value="hide_option" selected>Hide Add-on Option</option>
+                    </select>
+                    
+                    <div class="action-config">
+                        <select class="addon-select">
+                            <option value="">Select add-on...</option>
+                            <optgroup label="🌍 Global Add-ons">
+                                <option value="test_global_163" selected>Test (Add-ons Group #1)</option>
+                            </optgroup>
+                        </select>
+                        <select class="option-select">
+                            <option value="">Select option...</option>
+                            <option value="option_1">Option 1</option>
+                            <option value="option_2">Option 2</option>
+                            <option value="option_3">Option 3</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="remove-action">×</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="example-section">
+            <h2>3. Set Price Action (With Full Configuration)</h2>
+            <p>Price actions can target either entire add-ons or specific options:</p>
+            
+            <div class="action-item">
+                <div class="action-row">
+                    <select class="action-type">
+                        <option value="set_price" selected>Set Add-on Price</option>
+                    </select>
+                    
+                    <div class="action-config">
+                        <select class="target-level">
+                            <option value="addon">Entire Add-on</option>
+                            <option value="option">Specific Option</option>
+                        </select>
+                        <select class="addon-select">
+                            <option value="">Select add-on...</option>
+                            <optgroup label="🌍 Global Add-ons">
+                                <option value="test_global_163">Test (Add-ons Group #1)</option>
+                            </optgroup>
+                        </select>
+                        <select class="option-select" style="display: none;">
+                            <option value="">Select option...</option>
+                        </select>
+                        <input type="number" class="price-input" placeholder="New price" step="0.01">
+                    </div>
+                    
+                    <button type="button" class="remove-action">×</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="example-section">
+            <h2>4. Multiple Actions Example</h2>
+            <p>Showing how different action types have different configurations:</p>
+            
+            <div class="actions-list">
+                <!-- Hide Addon - Simple -->
+                <div class="action-item">
+                    <div class="action-row">
+                        <select class="action-type">
+                            <option value="hide_addon" selected>Hide Add-on</option>
+                        </select>
+                        <div class="action-config">
+                            <select class="addon-select" style="min-width: 400px;">
+                                <option value="shipping_global">Shipping Options</option>
+                            </select>
+                        </div>
+                        <button type="button" class="remove-action">×</button>
+                    </div>
+                </div>
+                
+                <!-- Set Price - Complex -->
+                <div class="action-item">
+                    <div class="action-row">
+                        <select class="action-type">
+                            <option value="set_price" selected>Set Add-on Price</option>
+                        </select>
+                        <div class="action-config">
+                            <select class="target-level">
+                                <option value="option" selected>Specific Option</option>
+                            </select>
+                            <select class="addon-select">
+                                <option value="gift_wrap_global">Gift Wrapping</option>
+                            </select>
+                            <select class="option-select">
+                                <option value="premium_wrap">Premium Wrap</option>
+                            </select>
+                            <input type="number" class="price-input" placeholder="New price" value="15.00">
+                        </div>
+                        <button type="button" class="remove-action">×</button>
+                    </div>
+                </div>
+                
+                <!-- Make Required - Medium -->
+                <div class="action-item">
+                    <div class="action-row">
+                        <select class="action-type">
+                            <option value="make_required" selected>Make Add-on Required</option>
+                        </select>
+                        <div class="action-config">
+                            <select class="target-level">
+                                <option value="addon" selected>Entire Add-on</option>
+                            </select>
+                            <select class="addon-select">
+                                <option value="warranty_global">Extended Warranty</option>
+                            </select>
+                            <select class="option-select" style="display: none;">
+                                <option value="">Select option...</option>
+                            </select>
+                        </div>
+                        <button type="button" class="remove-action">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
