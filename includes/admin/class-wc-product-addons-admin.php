@@ -1430,6 +1430,20 @@ class WC_Product_Addons_Admin {
 				}
 			}
 			
+			// Get target information
+			$targets = array();
+			if ( $rule->rule_type === 'category' && $rule->scope_id ) {
+				$term = get_term( $rule->scope_id, 'product_cat' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$targets[] = $term->name;
+				}
+			} elseif ( $rule->rule_type === 'product' && $rule->scope_id ) {
+				$product = wc_get_product( $rule->scope_id );
+				if ( $product ) {
+					$targets[] = $product->get_name();
+				}
+			}
+			
 			$formatted_rules[] = array(
 				'id' => $rule->rule_id,
 				'name' => $rule->rule_name,
@@ -1439,7 +1453,12 @@ class WC_Product_Addons_Admin {
 				'status' => $rule->enabled ? 'active' : 'inactive',
 				'status_label' => $rule->enabled ? __( 'Active', 'woocommerce-product-addons' ) : __( 'Inactive', 'woocommerce-product-addons' ),
 				'conditions_summary' => implode( ' AND ', $conditions_summary ),
-				'actions_summary' => implode( ', ', $actions_summary )
+				'actions_summary' => implode( ', ', $actions_summary ),
+				'created_date' => $rule->created_at,
+				'modified_date' => $rule->updated_at,
+				'conditions_count' => count( $conditions ),
+				'actions_count' => count( $actions ),
+				'targets' => $targets
 			);
 		}
 		

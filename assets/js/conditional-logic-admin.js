@@ -1119,6 +1119,35 @@
             var template = $('#rule-item-template').html();
             
             $.each(rules, function(index, rule) {
+                // Format dates
+                var createdDate = rule.created_date ? new Date(rule.created_date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }) : 'N/A';
+                
+                var modifiedDate = rule.modified_date ? new Date(rule.modified_date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }) : createdDate;
+                
+                // Generate rule targets HTML
+                var ruleTargetsHtml = '';
+                if (rule.scope === 'global') {
+                    ruleTargetsHtml = '<div class="rule-targets"><span class="rule-target-item">All Products</span></div>';
+                } else if (rule.targets && rule.targets.length > 0) {
+                    ruleTargetsHtml = '<div class="rule-targets">';
+                    $.each(rule.targets, function(i, target) {
+                        ruleTargetsHtml += '<span class="rule-target-item">' + target + '</span>';
+                    });
+                    ruleTargetsHtml += '</div>';
+                }
+                
                 var html = template
                     .replace(/{rule_id}/g, rule.id)
                     .replace(/{rule_name}/g, rule.name)
@@ -1129,7 +1158,12 @@
                     .replace(/{status_label}/g, rule.status_label)
                     .replace(/{toggle_icon}/g, rule.status === 'active' ? 'visibility' : 'hidden')
                     .replace(/{conditions_summary}/g, rule.conditions_summary)
-                    .replace(/{actions_summary}/g, rule.actions_summary);
+                    .replace(/{actions_summary}/g, rule.actions_summary)
+                    .replace(/{created_date}/g, createdDate)
+                    .replace(/{modified_date}/g, modifiedDate)
+                    .replace(/{conditions_count}/g, rule.conditions_count || 0)
+                    .replace(/{actions_count}/g, rule.actions_count || 0)
+                    .replace(/{rule_targets}/g, ruleTargetsHtml);
                 
                 $rulesList.append(html);
             });
